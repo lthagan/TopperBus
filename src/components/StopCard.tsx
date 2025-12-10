@@ -427,13 +427,10 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
               </div>
             </div>
           ) : sortedPredictions.length === 0 ? (
-            <div className="text-center py-6">
-              <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground mb-3">No upcoming arrivals</p>
-              
-              {/* Show routes that are out of service */}
+            <div className="py-6">
+              {/* Show routes that are out of service - at top */}
               {routesOutOfService.length > 0 && (
-                <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-left">
+                <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-left">
                   <p className="text-xs text-amber-200/90 mb-2 font-medium">Routes not currently in service:</p>
                   {routesOutOfService.map(r => {
                     const schedule = ROUTE_SCHEDULES[r.tag];
@@ -458,6 +455,11 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
                   </p>
                 </div>
               )}
+              
+              <div className="text-center">
+                <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">No upcoming arrivals</p>
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
