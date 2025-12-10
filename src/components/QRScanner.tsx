@@ -1,16 +1,44 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { X, Camera, ScanLine } from 'lucide-react';
+import { X, Camera, ScanLine, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Route } from '@/types/transit';
+import { Button } from '@/components/ui/button';
 
 interface QRScannerProps {
   onScan: (stopId: string) => void;
   onClose: () => void;
+  routes: Route[];
 }
 
-const QRScanner = ({ onScan, onClose }: QRScannerProps) => {
+const QRScanner = ({ onScan, onClose, routes }: QRScannerProps) => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(true);
+  const [invalidCode, setInvalidCode] = useState<string | null>(null);
+
+  // Get all valid stop IDs from routes
+  const validStopIds = new Set(
+    routes.flatMap(route => route.stops.map(stop => stop.stopId))
+  );
+
+  const extractStopId = (decodedText: string): string | null => {
+    let stopId = decodedText.trim();
+    
+    // Handle URL formats
+    if (decodedText.includes('stop=')) {
+      const match = decodedText.match(/stop=([^&]+)/);
+      if (match) stopId = match[1];
+    } else if (decodedText.includes('/stop/')) {
+      const parts = decodedText.split('/stop/');
+      if (parts[1]) stopId = parts[1].split(/[?#]/)[0];
+    }
+    
+    return stopId;
+  };
+
+  const isValidStop = (stopId: string): boolean => {
+    return validStopIds.has(stopId);
+  };
 
   useEffect(() => {
     const startScanner = async () => {
@@ -24,19 +52,19 @@ const QRScanner = ({ onScan, onClose }: QRScannerProps) => {
             qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {
-            // Extract stop ID from URL or direct stop ID
-            let stopId = decodedText;
+            const stopId = extractStopId(decodedText);
             
-            // Handle various URL formats
-            if (decodedText.includes('stop=')) {
-              const match = decodedText.match(/stop=([^&]+)/);
-              if (match) stopId = match[1];
-            } else if (decodedText.includes('/stop/')) {
-              const parts = decodedText.split('/stop/');
-              if (parts[1]) stopId = parts[1].split(/[?#]/)[0];
+            if (stopId && isValidStop(stopId)) {
+              // Valid stop - proceed
+              onScan(stopId);
+            } else {
+              // Invalid QR code
+              setInvalidCode(decodedText);
+              // Stop scanning when invalid code detected
+              if (scannerRef.current) {
+                scannerRef.current.stop().catch(() => {});
+              }
             }
-            
-            onScan(stopId);
           },
           () => {} // Ignore errors during scanning
         );
@@ -44,7 +72,7 @@ const QRScanner = ({ onScan, onClose }: QRScannerProps) => {
         setIsStarting(false);
       } catch (err) {
         console.error('Scanner error:', err);
-        setError('Unable to access camera. Please check permissions.');
+        setError('Camera access denied. Please allow camera permissions to scan QR codes.');
         setIsStarting(false);
       }
     };
@@ -57,6 +85,43 @@ const QRScanner = ({ onScan, onClose }: QRScannerProps) => {
       }
     };
   }, [onScan]);
+
+  const handleRetry = async () => {
+    setInvalidCode(null);
+    setIsStarting(true);
+    
+    try {
+      if (!scannerRef.current) {
+        scannerRef.current = new Html5Qrcode('qr-reader');
+      }
+      
+      await scannerRef.current.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        (decodedText) => {
+          const stopId = extractStopId(decodedText);
+          
+          if (stopId && isValidStop(stopId)) {
+            onScan(stopId);
+          } else {
+            setInvalidCode(decodedText);
+            if (scannerRef.current) {
+              scannerRef.current.stop().catch(() => {});
+            }
+          }
+        },
+        () => {}
+      );
+      
+      setIsStarting(false);
+    } catch (err) {
+      setError('Failed to restart scanner');
+      setIsStarting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-[1001] flex flex-col">
@@ -77,15 +142,36 @@ const QRScanner = ({ onScan, onClose }: QRScannerProps) => {
       {/* Scanner */}
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         {error ? (
-          <div className="text-center">
-            <Camera className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <p className="text-destructive mb-4">{error}</p>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
-            >
-              Close
-            </button>
+          <div className="text-center max-w-sm">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">Camera Access Required</h3>
+            <p className="text-muted-foreground mb-6">{error}</p>
+            <Button onClick={onClose} className="w-full">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Go Back
+            </Button>
+          </div>
+        ) : invalidCode ? (
+          <div className="text-center max-w-sm">
+            <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-amber-500" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">Invalid QR Code</h3>
+            <p className="text-muted-foreground mb-6">
+              This QR code is not a valid WKU Transit stop code. Please scan a QR code from an official bus stop.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button onClick={handleRetry} variant="default" className="w-full">
+                <ScanLine className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
+              <Button onClick={onClose} variant="outline" className="w-full">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Go Back
+              </Button>
+            </div>
           </div>
         ) : (
           <>
