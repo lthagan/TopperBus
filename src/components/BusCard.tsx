@@ -24,14 +24,15 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): nu
 };
 
 // Height constants
-const HEADER_HEIGHT = 140;
-const INFO_ITEM_HEIGHT = 50;
-const DRAG_HANDLE_HEIGHT = 40;
+const HEADER_HEIGHT = 150;
+const INFO_ITEM_HEIGHT = 60;
+const DRAG_HANDLE_HEIGHT = 48;
 const MAX_HEIGHT = 60;
+const CONTENT_PADDING = 32; // padding from the content area
 
 const calculateMinHeight = (infoCount: number): number => {
   const windowHeight = window.innerHeight;
-  const contentHeight = HEADER_HEIGHT + (Math.min(infoCount, 3) * INFO_ITEM_HEIGHT) + DRAG_HANDLE_HEIGHT;
+  const contentHeight = HEADER_HEIGHT + (Math.min(infoCount, 3) * INFO_ITEM_HEIGHT) + DRAG_HANDLE_HEIGHT + CONTENT_PADDING;
   return Math.min(MAX_HEIGHT, (contentHeight / windowHeight) * 100);
 };
 
