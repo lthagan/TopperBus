@@ -173,55 +173,109 @@ const BusMap = ({ routes, vehicles, selectedRoute, selectedStop, onStopClick, is
     });
   }, [displayedRoutes, selectedRoute]);
 
+  // Helper to create SVG for multi-route stop marker
+  const createStopMarkerSvg = (colors: string[], isSelected: boolean): string => {
+    const size = isSelected ? 24 : 18;
+    const radius = (size / 2) - 2;
+    const centerX = size / 2;
+    const centerY = size / 2;
+    
+    if (colors.length === 1) {
+      // Single route - simple circle with inner dot
+      return `
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+          <circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="#${colors[0]}" stroke="${isSelected ? '#ffffff' : '#1a1f2e'}" stroke-width="2"/>
+          <circle cx="${centerX}" cy="${centerY}" r="${radius * 0.4}" fill="${isSelected ? '#ffffff' : '#1a1f2e'}"/>
+        </svg>
+      `;
+    }
+    
+    // Multiple routes - pie segments
+    const segmentAngle = 360 / colors.length;
+    let segments = '';
+    
+    colors.forEach((color, index) => {
+      const startAngle = index * segmentAngle - 90;
+      const endAngle = startAngle + segmentAngle;
+      
+      const startRad = (startAngle * Math.PI) / 180;
+      const endRad = (endAngle * Math.PI) / 180;
+      
+      const x1 = centerX + radius * Math.cos(startRad);
+      const y1 = centerY + radius * Math.sin(startRad);
+      const x2 = centerX + radius * Math.cos(endRad);
+      const y2 = centerY + radius * Math.sin(endRad);
+      
+      const largeArc = segmentAngle > 180 ? 1 : 0;
+      
+      segments += `<path d="M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="#${color}"/>`;
+    });
+    
+    return `
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${centerX}" cy="${centerY}" r="${radius + 1}" fill="${isSelected ? '#ffffff' : '#1a1f2e'}"/>
+        ${segments}
+        <circle cx="${centerX}" cy="${centerY}" r="${radius * 0.35}" fill="${isSelected ? '#ffffff' : '#1a1f2e'}"/>
+      </svg>
+    `;
+  };
+
   // Update stop markers
   useEffect(() => {
     if (!markersRef.current) return;
     markersRef.current.clearLayers();
 
-    // Collect unique stops
-    const stopsMap = new Map<string, { stop: Stop; route: Route }>();
+    // Collect stops with ALL their routes
+    const stopsMap = new Map<string, { stop: Stop; routes: Route[] }>();
     displayedRoutes.forEach(route => {
       route.stops.forEach(stop => {
-        if (!stopsMap.has(stop.tag)) {
-          stopsMap.set(stop.tag, { stop, route });
+        const existing = stopsMap.get(stop.tag);
+        if (existing) {
+          if (!existing.routes.find(r => r.tag === route.tag)) {
+            existing.routes.push(route);
+          }
+        } else {
+          stopsMap.set(stop.tag, { stop, routes: [route] });
         }
       });
     });
 
-    stopsMap.forEach(({ stop, route }) => {
+    stopsMap.forEach(({ stop, routes: stopRoutes }) => {
       const isSelected = selectedStop?.tag === stop.tag;
-      const color = route.color === '000000' ? '6B7280' : route.color;
+      const colors = stopRoutes.map(r => r.color === '000000' ? '6B7280' : r.color);
+      const size = isSelected ? 24 : 18;
       
       const icon = L.divIcon({
         className: 'custom-stop-marker',
         html: `
           <div style="
-            width: ${isSelected ? '20px' : '14px'};
-            height: ${isSelected ? '20px' : '14px'};
-            background-color: #${color};
-            border: 3px solid ${isSelected ? '#ffffff' : 'hsl(222, 47%, 11%)'};
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            width: ${size}px;
+            height: ${size}px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
             transition: all 0.2s ease;
-          "></div>
+          ">
+            ${createStopMarkerSvg(colors, isSelected)}
+          </div>
         `,
-        iconSize: [isSelected ? 20 : 14, isSelected ? 20 : 14],
-        iconAnchor: [isSelected ? 10 : 7, isSelected ? 10 : 7],
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
       });
+
+      const routesList = stopRoutes.map(r => `<span style="color: #${r.color === '000000' ? '6B7280' : r.color};">●</span> ${r.title}`).join('<br/>');
 
       const marker = L.marker([stop.lat, stop.lon], { icon })
         .bindPopup(`
           <div style="padding: 4px;">
             <strong style="font-size: 14px;">${stop.title}</strong>
             <div style="font-size: 12px; opacity: 0.7; margin-top: 4px;">
-              ${route.title}
+              ${routesList}
             </div>
             <div style="font-size: 11px; opacity: 0.5; margin-top: 2px;">
               Stop ID: ${stop.stopId}
             </div>
           </div>
         `)
-        .on('click', () => onStopClick(stop, route));
+        .on('click', () => onStopClick(stop, stopRoutes[0]));
 
       marker.addTo(markersRef.current!);
     });
