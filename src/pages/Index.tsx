@@ -254,6 +254,7 @@ const Index = () => {
         <QRScanner
           onScan={handleQRScan}
           onClose={() => setShowScanner(false)}
+          routes={routes}
         />
       )}
     </main>
