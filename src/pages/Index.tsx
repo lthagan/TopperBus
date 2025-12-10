@@ -214,9 +214,45 @@ const Index = () => {
           
           {/* Dynamic route warning for routes with no active buses */}
           {(() => {
+            const now = new Date();
+            const dayOfWeek = now.getDay();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const currentTime = hours * 60 + minutes;
+            
+            // Service hours: Mon-Fri, roughly 7:15 AM - 5:30 PM
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const serviceStart = 7 * 60 + 15; // 7:15 AM
+            const serviceEnd = 17 * 60 + 30; // 5:30 PM
+            const isOutsideHours = currentTime < serviceStart || currentTime > serviceEnd;
+            
             const inactiveRoutes = routes.filter(r => 
               !vehicles.some(v => v.routeTag === r.tag)
             );
+            
+            // Determine the message based on conditions
+            if (isWeekend) {
+              return (
+                <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-200/90">
+                    <span className="font-medium">Note:</span> Buses are out of service. WKU Transit operates Monday - Friday only.
+                  </p>
+                </div>
+              );
+            }
+            
+            if (isOutsideHours && inactiveRoutes.length === routes.length) {
+              return (
+                <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-200/90">
+                    <span className="font-medium">Note:</span> Buses are out of service for the day. Service hours are Mon-Fri, 7:15 AM - 5:30 PM.
+                  </p>
+                </div>
+              );
+            }
+            
             if (inactiveRoutes.length === 0) return null;
             
             return (
