@@ -30,7 +30,7 @@ const QRCodes = () => {
   }, []);
 
   const getBaseUrl = () => {
-    return window.location.origin;
+    return 'https://topperbus.lovable.app';
   };
 
   const stopsWithRoutes = useMemo(() => {
