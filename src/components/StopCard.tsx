@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Stop, Route, StopPredictions, Prediction, VehicleLocation } from '@/types/transit';
 import { fetchPredictions, fetchVehicleLocations } from '@/lib/api';
-import { Clock, MapPin, X, RefreshCw, Bus, Navigation, ChevronDown } from 'lucide-react';
+import { Clock, MapPin, X, RefreshCw, Bus, Navigation } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 
 interface StopCardProps {
   stop: Stop;
@@ -40,6 +41,7 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [selectedRouteFilter, setSelectedRouteFilter] = useState<string | null>(null);
   const [routesAtStop, setRoutesAtStop] = useState<Route[]>([]);
+  const [isOpen, setIsOpen] = useState(true);
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -79,6 +81,15 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
     const interval = setInterval(fetchAllData, 30000);
     return () => clearInterval(interval);
   }, [stop.tag]);
+
+  // Handle drawer close
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setIsOpen(false);
+      // Small delay to allow animation
+      setTimeout(onClose, 150);
+    }
+  };
 
   // Flatten and sort all predictions by time
   const sortedPredictions = useMemo(() => {
@@ -172,25 +183,15 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
   };
 
   return (
-    <>
-      {/* Invisible backdrop for click-to-close */}
-      <div 
-        className={cn(
-          "fixed inset-0 z-[999]",
-          isClosing ? "animate-fade-out" : "animate-fade-in"
-        )}
-        onClick={onClose}
-      />
-      
-      {/* Panel - limited height to show map and selected stop */}
-      <div 
-        className={cn(
-          "fixed top-0 left-0 right-0 bg-card border-b border-border rounded-b-2xl shadow-2xl z-[1000] max-h-[50vh] flex flex-col",
-          isClosing ? "animate-slide-up-out" : "animate-slide-down"
-        )}
-      >
+    <Drawer 
+      open={isOpen && !isClosing} 
+      onOpenChange={handleOpenChange}
+      direction="top"
+      modal={false}
+    >
+      <DrawerContent className="top-0 bottom-auto mt-0 rounded-t-none rounded-b-2xl max-h-[70vh] flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-border flex-shrink-0">
+        <DrawerHeader className="p-4 border-b border-border flex-shrink-0">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -214,9 +215,9 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
                   Stop {stop.stopId}
                 </span>
               </div>
-              <h3 className="text-lg font-semibold text-foreground truncate">
+              <DrawerTitle className="text-lg font-semibold text-foreground truncate text-left">
                 {stop.shortTitle || stop.title}
-              </h3>
+              </DrawerTitle>
             </div>
             <button
               onClick={onClose}
@@ -280,7 +281,7 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
               })}
             </div>
           )}
-        </div>
+        </DrawerHeader>
 
         {/* Predictions */}
         <div className="flex-1 overflow-y-auto p-4">
@@ -298,7 +299,7 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
             </div>
           ) : (
             <div className="space-y-2">
-              {sortedPredictions.slice(0, 8).map((item, i) => {
+              {sortedPredictions.map((item, i) => {
                 const nearestStop = getNearestStopForBus(item.prediction.vehicle, item.routeTag);
                 const isFirst = i === 0;
                 
@@ -366,12 +367,12 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
           )}
         </div>
         
-        {/* Pull indicator */}
+        {/* Pull indicator at bottom */}
         <div className="flex-shrink-0 py-2 flex justify-center">
           <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
         </div>
-      </div>
-    </>
+      </DrawerContent>
+    </Drawer>
   );
 };
 

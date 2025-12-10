@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Route, VehicleLocation, Stop } from '@/types/transit';
 import { fetchRouteConfig, fetchVehicleLocations } from '@/lib/api';
@@ -13,8 +13,6 @@ import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-const CLOSE_ANIMATION_DURATION = 250;
-
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -27,9 +25,6 @@ const Index = () => {
   const [view, setView] = useState<'map' | 'list'>('map');
   const [stopSearch, setStopSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isStopClosing, setIsStopClosing] = useState(false);
-  
-  const pendingStopRef = useRef<{ stop: Stop; route: Route } | null>(null);
 
   // Initial data load
   useEffect(() => {
@@ -95,44 +90,18 @@ const Index = () => {
     // Capture current view state immediately
     const shouldSwitchToMap = view === 'list';
     
-    // If a stop is already open, close it first with animation
-    if (selectedStop) {
-      // Store the pending stop to open after close animation
-      pendingStopRef.current = { stop, route };
-      setIsStopClosing(true);
-      
-      // Switch to map immediately if needed
-      if (shouldSwitchToMap) {
-        setView('map');
-      }
-      
-      setTimeout(() => {
-        setSelectedStop(null);
-        setSelectedStopRoute(null);
-        setIsStopClosing(false);
-        
-        // Open the new stop after a brief delay
-        setTimeout(() => {
-          if (pendingStopRef.current) {
-            openStop(pendingStopRef.current.stop, pendingStopRef.current.route, false);
-            pendingStopRef.current = null;
-          }
-        }, 50);
-      }, CLOSE_ANIMATION_DURATION);
-    } else {
-      openStop(stop, route, shouldSwitchToMap);
+    // Switch to map immediately if needed
+    if (shouldSwitchToMap) {
+      setView('map');
     }
-  }, [selectedStop, view, openStop]);
+    
+    openStop(stop, route, false);
+  }, [view, openStop]);
 
   const handleCloseStop = useCallback(() => {
-    setIsStopClosing(true);
-    
-    setTimeout(() => {
-      setSelectedStop(null);
-      setSelectedStopRoute(null);
-      setIsStopClosing(false);
-      setSearchParams({});
-    }, CLOSE_ANIMATION_DURATION);
+    setSelectedStop(null);
+    setSelectedStopRoute(null);
+    setSearchParams({});
   }, [setSearchParams]);
 
   const handleQRScan = (stopId: string) => {
@@ -301,7 +270,6 @@ const Index = () => {
           route={selectedStopRoute}
           allRoutes={routes}
           onClose={handleCloseStop}
-          isClosing={isStopClosing}
         />
       )}
 
