@@ -17,28 +17,28 @@ const QRScanner = ({ onScan, onClose, routes }: QRScannerProps) => {
   const [isStarting, setIsStarting] = useState(true);
   const [invalidCode, setInvalidCode] = useState<string | null>(null);
 
-  // Get all valid stop IDs from routes
-  const validStopIds = new Set(
-    routes.flatMap(route => route.stops.map(stop => stop.stopId))
+  // Get all valid stop IDs and tags from routes
+  const validStopIdentifiers = new Set(
+    routes.flatMap(route => route.stops.flatMap(stop => [stop.stopId, stop.tag]))
   );
 
   const extractStopId = (decodedText: string): string | null => {
     let stopId = decodedText.trim();
     
-    // Handle URL formats
+    // Handle URL formats - look for stop parameter
     if (decodedText.includes('stop=')) {
-      const match = decodedText.match(/stop=([^&]+)/);
-      if (match) stopId = match[1];
+      const match = decodedText.match(/stop=([^&\s]+)/);
+      if (match) stopId = decodeURIComponent(match[1]);
     } else if (decodedText.includes('/stop/')) {
       const parts = decodedText.split('/stop/');
-      if (parts[1]) stopId = parts[1].split(/[?#]/)[0];
+      if (parts[1]) stopId = decodeURIComponent(parts[1].split(/[?#]/)[0]);
     }
     
-    return stopId;
+    return stopId || null;
   };
 
   const isValidStop = (stopId: string): boolean => {
-    return validStopIds.has(stopId);
+    return validStopIdentifiers.has(stopId);
   };
 
   useEffect(() => {
