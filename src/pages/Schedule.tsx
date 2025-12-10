@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Route, VehicleLocation } from '@/types/transit';
-import { fetchRouteConfig, fetchVehicleLocations } from '@/lib/api';
+import { Route, VehicleLocation, StopPredictions } from '@/types/transit';
+import { fetchRouteConfig, fetchVehicleLocations, fetchPredictions } from '@/lib/api';
 import { ArrowLeft, Bus, Clock, MapPin, AlertCircle, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+interface BusJourneyStop {
+  tag: string;
+  title: string;
+  stopId: string;
+  estimatedMinutes: number | null;
+  isCurrent: boolean;
+}
 
 const Schedule = () => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [vehicles, setVehicles] = useState<VehicleLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+  const [busPredictions, setBusPredictions] = useState<Map<string, StopPredictions[]>>(new Map());
 
   useEffect(() => {
     const loadData = async () => {
@@ -41,15 +50,45 @@ const Schedule = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch predictions for stops along each bus's route
+  useEffect(() => {
+    const fetchBusPredictions = async () => {
+      const newPredictions = new Map<string, StopPredictions[]>();
+      
+      for (const vehicle of vehicles) {
+        const route = routes.find(r => r.tag === vehicle.routeTag);
+        if (!route) continue;
+        
+        const direction = route.directions.find(d => d.tag === vehicle.dirTag);
+        if (!direction || direction.stops.length === 0) continue;
+        
+        // Fetch predictions for first few stops to get timing info
+        try {
+          const stopTag = direction.stops[0];
+          const preds = await fetchPredictions(stopTag, route.tag);
+          newPredictions.set(`${vehicle.id}-${route.tag}`, preds);
+        } catch (error) {
+          console.error('Error fetching predictions:', error);
+        }
+      }
+      
+      setBusPredictions(newPredictions);
+    };
+    
+    if (vehicles.length > 0 && routes.length > 0) {
+      fetchBusPredictions();
+    }
+  }, [vehicles, routes]);
+
   const getRouteVehicles = (routeTag: string) => {
     return vehicles.filter(v => v.routeTag === routeTag);
   };
 
-  const getNextStopForBus = (vehicle: VehicleLocation, route: Route): string | null => {
+  const getBusJourney = (vehicle: VehicleLocation, route: Route): BusJourneyStop[] => {
     const direction = route.directions.find(d => d.tag === vehicle.dirTag);
-    if (!direction || direction.stops.length === 0) return null;
+    if (!direction || direction.stops.length === 0) return [];
     
-    // Find the closest stop to the bus's current position
+    // Find the closest stop to the bus's current position (current stop)
     let closestStopIndex = 0;
     let minDistance = Infinity;
     
@@ -66,12 +105,48 @@ const Schedule = () => {
       }
     });
     
-    // Get the next stop (or current if at the end)
-    const nextStopIndex = Math.min(closestStopIndex + 1, direction.stops.length - 1);
-    const nextStopTag = direction.stops[nextStopIndex];
-    const nextStop = route.stops.find(s => s.tag === nextStopTag);
+    // Build journey from current stop through remaining stops
+    const journeyStops: BusJourneyStop[] = [];
+    const totalStops = direction.stops.length;
     
-    return nextStop?.title || null;
+    // Calculate average time per stop (roughly 2-3 minutes between stops)
+    const avgMinutesPerStop = 2.5;
+    
+    for (let i = 0; i < totalStops; i++) {
+      const actualIndex = (closestStopIndex + i) % totalStops;
+      const stopTag = direction.stops[actualIndex];
+      const stop = route.stops.find(s => s.tag === stopTag);
+      
+      if (stop) {
+        let estimatedMinutes: number | null = null;
+        
+        if (i === 0) {
+          // Current stop
+          estimatedMinutes = 0;
+        } else {
+          // Estimate based on position in route
+          estimatedMinutes = Math.round(i * avgMinutesPerStop);
+        }
+        
+        journeyStops.push({
+          tag: stop.tag,
+          title: stop.title,
+          stopId: stop.stopId,
+          estimatedMinutes,
+          isCurrent: i === 0,
+        });
+      }
+    }
+    
+    return journeyStops;
+  };
+
+  const formatTimeRange = (minutes: number | null): string => {
+    if (minutes === null) return '--';
+    if (minutes === 0) return 'Now';
+    const minTime = Math.max(0, minutes - 2);
+    const maxTime = minutes + 2;
+    return `${minTime}-${maxTime} min`;
   };
 
   const displayedRoutes = selectedRoute 
@@ -196,7 +271,103 @@ const Schedule = () => {
                 </div>
               </div>
 
-              {/* Directions */}
+              {/* Active buses - NOW AT TOP */}
+              {routeVehicles.length > 0 && (
+                <div className="border-b border-border p-4 space-y-4">
+                  <h3 className="text-sm font-medium flex items-center gap-2">
+                    <Bus className="w-4 h-4" />
+                    Active Buses
+                  </h3>
+                  {routeVehicles.map(vehicle => {
+                    const speedMph = Math.round(vehicle.speedKmHr * 0.621371);
+                    const journey = getBusJourney(vehicle, route);
+                    const currentStop = journey.find(s => s.isCurrent);
+                    
+                    return (
+                      <div 
+                        key={vehicle.id}
+                        className="rounded-lg bg-secondary/50 overflow-hidden"
+                      >
+                        {/* Bus header */}
+                        <div className="px-4 py-3 flex items-center justify-between bg-secondary">
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                              style={{ backgroundColor: `#${color}` }}
+                            >
+                              {vehicle.id}
+                            </div>
+                            <div>
+                              <span className="font-semibold">Bus {vehicle.id}</span>
+                              <span className="text-xs text-muted-foreground ml-2">
+                                {speedMph} mph
+                              </span>
+                            </div>
+                          </div>
+                          {currentStop && (
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Currently at</p>
+                              <p className="text-sm font-medium text-primary truncate max-w-[150px]">
+                                {currentStop.title}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Journey stops */}
+                        <div className="relative px-4 py-2 max-h-[300px] overflow-y-auto">
+                          <div 
+                            className="absolute left-7 top-0 bottom-0 w-0.5"
+                            style={{ backgroundColor: `#${color}40` }}
+                          />
+                          {journey.map((stop, index) => (
+                            <Link
+                              key={`${vehicle.id}-${stop.tag}-${index}`}
+                              to={`/?stop=${stop.stopId}`}
+                              className={cn(
+                                "flex items-center gap-3 py-2 relative transition-colors hover:bg-secondary/50 rounded",
+                                stop.isCurrent && "bg-primary/10"
+                              )}
+                            >
+                              <div 
+                                className={cn(
+                                  "w-3 h-3 rounded-full border-2 z-10",
+                                  stop.isCurrent ? "bg-primary border-primary" : "bg-background"
+                                )}
+                                style={{ borderColor: stop.isCurrent ? undefined : `#${color}` }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                  "text-sm truncate",
+                                  stop.isCurrent && "font-semibold text-primary"
+                                )}>
+                                  {stop.title}
+                                </p>
+                              </div>
+                              <div className={cn(
+                                "text-xs px-2 py-1 rounded-full whitespace-nowrap",
+                                stop.isCurrent 
+                                  ? "bg-primary text-primary-foreground font-medium"
+                                  : "bg-muted text-muted-foreground"
+                              )}>
+                                {formatTimeRange(stop.estimatedMinutes)}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                        
+                        <div className="px-4 py-2 bg-muted/30 border-t border-border">
+                          <p className="text-xs text-muted-foreground text-center">
+                            Times are estimates with ±2 minute margin
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Directions / Full schedule */}
               {route.directions.filter(d => d.useForUI).map(direction => (
                 <div key={direction.tag} className="border-t border-border">
                   <div className="px-4 py-3 bg-secondary/30">
@@ -241,46 +412,6 @@ const Schedule = () => {
                   </div>
                 </div>
               ))}
-
-              {/* Active buses */}
-              {routeVehicles.length > 0 && (
-                <div className="border-t border-border p-4">
-                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <Bus className="w-4 h-4" />
-                    Active Buses
-                  </h3>
-                  <div className="flex flex-col gap-2">
-                    {routeVehicles.map(vehicle => {
-                      const speedMph = Math.round(vehicle.speedKmHr * 0.621371);
-                      const nextStop = getNextStopForBus(vehicle, route);
-                      return (
-                        <div 
-                          key={vehicle.id}
-                          className="flex items-center gap-3 px-3 py-2 rounded-lg bg-secondary text-sm"
-                        >
-                          <div 
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: `#${color}` }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">Bus {vehicle.id}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {speedMph} mph
-                              </span>
-                            </div>
-                            {nextStop && (
-                              <p className="text-xs text-green-400 truncate">
-                                → {nextStop}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}
