@@ -82,22 +82,29 @@ const Index = () => {
     toast.error('Stop not found');
   };
 
-  const openStop = (stop: Stop, route: Route) => {
+  const openStop = useCallback((stop: Stop, route: Route, shouldSwitchToMap: boolean = false) => {
     setSelectedStop(stop);
     setSelectedStopRoute(route);
     setSearchParams({ stop: stop.stopId });
-    // Switch to map view on mobile when selecting a stop
-    if (view === 'list') {
+    if (shouldSwitchToMap) {
       setView('map');
     }
-  };
+  }, [setSearchParams]);
 
   const handleStopClick = useCallback((stop: Stop, route: Route) => {
+    // Capture current view state immediately
+    const shouldSwitchToMap = view === 'list';
+    
     // If a stop is already open, close it first with animation
     if (selectedStop) {
       // Store the pending stop to open after close animation
       pendingStopRef.current = { stop, route };
       setIsStopClosing(true);
+      
+      // Switch to map immediately if needed
+      if (shouldSwitchToMap) {
+        setView('map');
+      }
       
       setTimeout(() => {
         setSelectedStop(null);
@@ -107,15 +114,15 @@ const Index = () => {
         // Open the new stop after a brief delay
         setTimeout(() => {
           if (pendingStopRef.current) {
-            openStop(pendingStopRef.current.stop, pendingStopRef.current.route);
+            openStop(pendingStopRef.current.stop, pendingStopRef.current.route, false);
             pendingStopRef.current = null;
           }
         }, 50);
       }, CLOSE_ANIMATION_DURATION);
     } else {
-      openStop(stop, route);
+      openStop(stop, route, shouldSwitchToMap);
     }
-  }, [selectedStop, setSearchParams]);
+  }, [selectedStop, view, openStop]);
 
   const handleCloseStop = useCallback(() => {
     setIsStopClosing(true);
