@@ -197,9 +197,17 @@ const QRCodes = () => {
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground text-center mb-3 break-all px-2">
-                topperbus.lovable.app/?stop={stop.stopId}
-              </p>
+              <div className="text-center mb-3 px-2">
+                <p className="text-xs font-medium text-foreground mb-1">
+                  Scan QR code or visit:
+                </p>
+                <p className="text-sm font-semibold text-primary">
+                  topperbus.lovable.app
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Click "Stops" and search for this stop
+                </p>
+              </div>
               <Button 
                 variant="ghost" 
                 size="sm" 
