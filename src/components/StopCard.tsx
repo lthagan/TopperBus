@@ -57,19 +57,25 @@ const isRouteInService = (routeTag: string): boolean => {
 };
 
 // Height constants based on content
-const HEADER_HEIGHT = 180; // approx header height in pixels
-const PREDICTION_ITEM_HEIGHT = 70; // approx height per prediction item
-const DRAG_HANDLE_HEIGHT = 40; // drag handle height
+const HEADER_HEIGHT = 160; // approx header height in pixels
+const PREDICTION_ITEM_HEIGHT = 64; // approx height per prediction item (reduced)
+const DRAG_HANDLE_HEIGHT = 36; // drag handle height
 const MAX_HEIGHT = 75; // percentage
+const NO_ARRIVALS_HEIGHT = 140; // height for no arrivals message
 
 // Calculate dynamic minimum height based on number of predictions (show up to 3)
-const calculateMinHeight = (predCount: number): number => {
+const calculateMinHeight = (predCount: number, hasRouteFilters: boolean): number => {
   const windowHeight = window.innerHeight;
   const itemsToShow = Math.min(predCount, 3);
-  const contentHeight = HEADER_HEIGHT + (itemsToShow * PREDICTION_ITEM_HEIGHT) + DRAG_HANDLE_HEIGHT;
-  // Add extra space for "no arrivals" message if no predictions
-  const minContentHeight = predCount === 0 ? HEADER_HEIGHT + 150 + DRAG_HANDLE_HEIGHT : contentHeight;
-  return Math.min(MAX_HEIGHT, (minContentHeight / windowHeight) * 100);
+  const filterHeight = hasRouteFilters ? 40 : 0;
+  const baseHeader = HEADER_HEIGHT + filterHeight;
+  
+  if (predCount === 0) {
+    return Math.min(MAX_HEIGHT, ((baseHeader + NO_ARRIVALS_HEIGHT + DRAG_HANDLE_HEIGHT) / windowHeight) * 100);
+  }
+  
+  const contentHeight = baseHeader + (itemsToShow * PREDICTION_ITEM_HEIGHT) + DRAG_HANDLE_HEIGHT;
+  return Math.min(MAX_HEIGHT, (contentHeight / windowHeight) * 100);
 };
 
 const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
@@ -161,15 +167,16 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
     return flat.sort((a, b) => a.prediction.minutes - b.prediction.minutes);
   }, [predictions, allRoutes, selectedRouteFilter]);
 
-  // Calculate minimum height based on predictions
-  const minHeight = calculateMinHeight(sortedPredictions.length);
+  // Calculate minimum height based on predictions and whether filters are shown
+  const hasRouteFilters = routesInService.length > 1;
+  const minHeight = calculateMinHeight(sortedPredictions.length, hasRouteFilters);
 
   // Update panel height when predictions change
   useEffect(() => {
-    if (!isDragging && panelHeight === null) {
+    if (!isDragging) {
       setPanelHeight(minHeight);
     }
-  }, [sortedPredictions.length, isDragging, minHeight, panelHeight]);
+  }, [sortedPredictions.length, hasRouteFilters, isDragging, minHeight]);
 
   // Drag handlers
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {

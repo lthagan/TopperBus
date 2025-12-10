@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Route, VehicleLocation, Stop } from '@/types/transit';
 import { fetchRouteConfig, fetchVehicleLocations } from '@/lib/api';
 import BusMap from '@/components/BusMap';
+import BusCard from '@/components/BusCard';
 import RouteSelector from '@/components/RouteSelector';
 import StopCard from '@/components/StopCard';
 import StopList from '@/components/StopList';
@@ -20,6 +21,8 @@ const Index = () => {
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [selectedStopRoute, setSelectedStopRoute] = useState<Route | null>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleLocation | null>(null);
+  const [selectedVehicleRoute, setSelectedVehicleRoute] = useState<Route | null>(null);
   const [loading, setLoading] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
   const [view, setView] = useState<'map' | 'list'>('map');
@@ -52,19 +55,27 @@ const Index = () => {
     loadData();
   }, []);
 
-  // Refresh vehicle locations periodically
+  // Refresh vehicle locations periodically and update selected vehicle position
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const vehicleData = await fetchVehicleLocations();
         setVehicles(vehicleData);
+        
+        // Update selected vehicle with new position
+        if (selectedVehicle) {
+          const updatedVehicle = vehicleData.find(v => v.id === selectedVehicle.id);
+          if (updatedVehicle) {
+            setSelectedVehicle(updatedVehicle);
+          }
+        }
       } catch (error) {
         console.error('Error refreshing vehicles:', error);
       }
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedVehicle?.id]);
 
   const selectStopById = (stopId: string, routeData: Route[] = routes) => {
     for (const route of routeData) {
@@ -103,6 +114,19 @@ const Index = () => {
     setSelectedStopRoute(null);
     setSearchParams({});
   }, [setSearchParams]);
+
+  const handleVehicleClick = useCallback((vehicle: VehicleLocation, route: Route) => {
+    setSelectedVehicle(vehicle);
+    setSelectedVehicleRoute(route);
+    // Close stop card if open
+    setSelectedStop(null);
+    setSelectedStopRoute(null);
+  }, []);
+
+  const handleCloseVehicle = useCallback(() => {
+    setSelectedVehicle(null);
+    setSelectedVehicleRoute(null);
+  }, []);
 
   const handleQRScan = (stopId: string) => {
     setShowScanner(false);
@@ -253,7 +277,9 @@ const Index = () => {
             vehicles={vehicles}
             selectedRoute={selectedRoute}
             selectedStop={selectedStop}
+            selectedVehicle={selectedVehicle}
             onStopClick={handleStopClick}
+            onVehicleClick={handleVehicleClick}
             isVisible={view === 'map'}
           />
           {!selectedRoute && (
@@ -283,6 +309,16 @@ const Index = () => {
           route={selectedStopRoute}
           allRoutes={routes}
           onClose={handleCloseStop}
+        />
+      )}
+
+      {/* Selected bus card */}
+      {selectedVehicle && selectedVehicleRoute && (
+        <BusCard
+          vehicle={selectedVehicle}
+          route={selectedVehicleRoute}
+          allRoutes={routes}
+          onClose={handleCloseVehicle}
         />
       )}
 
