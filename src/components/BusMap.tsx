@@ -8,7 +8,9 @@ interface BusMapProps {
   vehicles: VehicleLocation[];
   selectedRoute: string | null;
   selectedStop: Stop | null;
+  selectedVehicle: VehicleLocation | null;
   onStopClick: (stop: Stop, route: Route) => void;
+  onVehicleClick: (vehicle: VehicleLocation, route: Route) => void;
   isVisible?: boolean;
 }
 
@@ -21,7 +23,7 @@ const ROUTE_STYLES: Record<number, { dashArray?: string; weight: number; offset:
   4: { weight: 3, offset: -5 },
 };
 
-const BusMap = ({ routes, vehicles, selectedRoute, selectedStop, onStopClick, isVisible = true }: BusMapProps) => {
+const BusMap = ({ routes, vehicles, selectedRoute, selectedStop, selectedVehicle, onStopClick, onVehicleClick, isVisible = true }: BusMapProps) => {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
@@ -364,82 +366,86 @@ const BusMap = ({ routes, vehicles, selectedRoute, selectedStop, onStopClick, is
     filteredVehicles.forEach(vehicle => {
       const route = routes.find(r => r.tag === vehicle.routeTag);
       const color = route ? (route.color === '000000' ? '6B7280' : route.color) : '6B7280';
-      const nextStop = getNextStopForBus(vehicle, route);
+      const isSelected = selectedVehicle?.id === vehicle.id;
+      const size = isSelected ? 40 : 32;
+      const innerSize = isSelected ? 34 : 28;
       
       const icon = L.divIcon({
         className: 'custom-bus-marker',
         html: `
           <div style="
             position: relative;
-            width: 32px;
-            height: 32px;
+            width: ${size}px;
+            height: ${size}px;
             display: flex;
             align-items: center;
             justify-content: center;
             transform: rotate(${vehicle.heading}deg);
+            filter: ${isSelected ? 'drop-shadow(0 0 10px rgba(34, 197, 94, 0.8))' : ''};
           ">
             <div style="
-              width: 28px;
-              height: 28px;
+              width: ${innerSize}px;
+              height: ${innerSize}px;
               background-color: #${color};
-              border: 3px solid #ffffff;
+              border: 3px solid ${isSelected ? '#22c55e' : '#ffffff'};
               border-radius: 50%;
               display: flex;
               align-items: center;
               justify-content: center;
               box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+              ${isSelected ? 'animation: pulse 2s infinite;' : ''}
             ">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <svg width="${isSelected ? 20 : 16}" height="${isSelected ? 20 : 16}" viewBox="0 0 24 24" fill="white">
                 <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
               </svg>
             </div>
             <div style="
               position: absolute;
-              top: -4px;
+              top: ${isSelected ? '-5px' : '-4px'};
               left: 50%;
               transform: translateX(-50%);
               width: 0;
               height: 0;
-              border-left: 6px solid transparent;
-              border-right: 6px solid transparent;
-              border-bottom: 8px solid #${color};
+              border-left: ${isSelected ? '7' : '6'}px solid transparent;
+              border-right: ${isSelected ? '7' : '6'}px solid transparent;
+              border-bottom: ${isSelected ? '10' : '8'}px solid #${color};
             "></div>
           </div>
         `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
       });
 
-      const speedMph = Math.round(vehicle.speedKmHr * 0.621371);
+      const marker = L.marker([vehicle.lat, vehicle.lon], { icon })
+        .on('click', () => {
+          if (route) {
+            onVehicleClick(vehicle, route);
+          }
+        });
       
-      L.marker([vehicle.lat, vehicle.lon], { icon })
-        .bindPopup(`
-          <div style="padding: 4px;">
-            <strong>Bus ${vehicle.id}</strong>
-            <div style="font-size: 12px; opacity: 0.7; margin-top: 4px;">
-              ${route?.title || vehicle.routeTag}
-            </div>
-            ${nextStop ? `<div style="font-size: 11px; color: #22c55e; margin-top: 2px;">
-              → ${nextStop}
-            </div>` : ''}
-            <div style="font-size: 11px; opacity: 0.5; margin-top: 2px;">
-              Speed: ${speedMph} mph
-            </div>
-          </div>
-        `)
-        .addTo(vehicleMarkersRef.current!);
+      marker.addTo(vehicleMarkersRef.current!);
     });
-  }, [vehicles, displayedRoutes, routes]);
+  }, [vehicles, displayedRoutes, routes, selectedVehicle, onVehicleClick]);
 
   // Center on selected stop
   useEffect(() => {
-    if (selectedStop && mapRef.current) {
+    if (selectedStop && mapRef.current && !selectedVehicle) {
       mapRef.current.setView([selectedStop.lat, selectedStop.lon], 17, {
         animate: true,
         duration: 0.5,
       });
     }
-  }, [selectedStop]);
+  }, [selectedStop, selectedVehicle]);
+
+  // Follow selected vehicle as it moves
+  useEffect(() => {
+    if (selectedVehicle && mapRef.current) {
+      mapRef.current.setView([selectedVehicle.lat, selectedVehicle.lon], 17, {
+        animate: true,
+        duration: 0.3,
+      });
+    }
+  }, [selectedVehicle?.lat, selectedVehicle?.lon]);
 
   // Invalidate map size when visibility changes (fixes tab switching issue)
   useEffect(() => {
