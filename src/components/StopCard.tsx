@@ -310,44 +310,46 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
                       getTimeBg(item.prediction.minutes, isFirst)
                     )}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
                         <div 
-                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ backgroundColor: `#${item.routeColor}` }}
                         >
-                          <Bus className="w-5 h-5 text-white" />
+                          <Bus className="w-4 h-4 text-white" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium text-sm whitespace-nowrap">
                               Bus #{item.prediction.vehicle}
                             </span>
                             <span 
-                              className="text-xs px-1.5 py-0.5 rounded"
+                              className="text-xs px-1.5 py-0.5 rounded truncate max-w-[80px]"
                               style={{ 
                                 backgroundColor: `#${item.routeColor}30`,
                                 color: `#${item.routeColor}`
                               }}
                             >
-                              {item.routeTitle}
+                              {item.routeTitle.replace('Route ', '')}
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                            <Navigation className="w-3 h-3" />
-                            {nearestStop ? `At: ${nearestStop}` : `Heading to: ${item.directionTitle}`}
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 truncate">
+                            <Navigation className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">
+                              {nearestStop ? `At: ${nearestStop}` : `To: ${item.directionTitle}`}
+                            </span>
                           </p>
                         </div>
                       </div>
                       <div className={cn(
-                        "text-right",
+                        "text-right flex-shrink-0 whitespace-nowrap",
                         getTimeColor(item.prediction.minutes)
                       )}>
                         {item.prediction.minutes === 0 ? (
                           <div className="text-lg font-bold">NOW</div>
                         ) : (
                           <>
-                            <div className="text-sm font-bold">
+                            <div className="text-xs font-bold">
                               {getArrivalTimeRange(item.prediction.minutes).clock}
                             </div>
                             <div className="text-xs opacity-70">
