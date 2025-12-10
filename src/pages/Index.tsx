@@ -8,7 +8,7 @@ import StopCard from '@/components/StopCard';
 import StopList from '@/components/StopList';
 import QRScanner from '@/components/QRScanner';
 import RouteLegend from '@/components/RouteLegend';
-import { Bus, ScanLine, List, Map as MapIcon, RefreshCw, Calendar } from 'lucide-react';
+import { Bus, ScanLine, List, Map as MapIcon, RefreshCw, Calendar, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -173,6 +173,14 @@ const Index = () => {
             selectedRoute={selectedRoute}
             onSelectRoute={setSelectedRoute}
           />
+          
+          {/* Kentucky Street Route Warning */}
+          <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-200/90">
+              <span className="font-medium">Note:</span> Kentucky Street route data is currently not being updated by the transit system. Live tracking may be unavailable.
+            </p>
+          </div>
         </div>
       </header>
 
