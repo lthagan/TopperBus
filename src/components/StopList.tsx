@@ -21,11 +21,15 @@ const StopList = ({ routes, selectedRoute, onStopSelect }: StopListProps) => {
     
     displayedRoutes.forEach(route => {
       route.stops.forEach(stop => {
-        const existing = stopsMap.get(stop.tag);
+        // Use lat/lon as key to merge stops at the same location (rounded to ~11m precision)
+        const locationKey = `${stop.lat.toFixed(4)},${stop.lon.toFixed(4)}`;
+        const existing = stopsMap.get(locationKey);
         if (existing) {
-          existing.routes.push(route);
+          if (!existing.routes.find(r => r.tag === route.tag)) {
+            existing.routes.push(route);
+          }
         } else {
-          stopsMap.set(stop.tag, { stop, routes: [route] });
+          stopsMap.set(locationKey, { stop, routes: [route] });
         }
       });
     });
@@ -65,7 +69,7 @@ const StopList = ({ routes, selectedRoute, onStopSelect }: StopListProps) => {
           <div className="divide-y divide-border">
             {filteredStops.map(({ stop, routes: stopRoutes }) => (
               <button
-                key={stop.tag}
+                key={`${stop.lat.toFixed(4)},${stop.lon.toFixed(4)}`}
                 onClick={() => onStopSelect(stop, stopRoutes[0])}
                 className="w-full p-4 text-left hover:bg-secondary/50 transition-colors"
               >
