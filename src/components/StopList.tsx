@@ -79,9 +79,11 @@ const StopList = ({ routes, selectedRoute, onStopSelect }: StopListProps) => {
                     <h4 className="font-medium text-foreground truncate">
                       {stop.shortTitle || stop.title}
                     </h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Stop #{stop.stopId}
-                    </p>
+                    {stop.stopId && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Stop #{stop.stopId}
+                      </p>
+                    )}
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {stopRoutes.map(route => {
                         const color = route.color === '000000' ? '6B7280' : route.color;
