@@ -134,6 +134,30 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
     return null;
   };
 
+  const formatClockTime = (date: Date): string => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const getArrivalTimeRange = (minutes: number): { clock: string; relative: string } => {
+    if (minutes === 0) return { clock: 'Now', relative: 'Now' };
+    
+    const now = new Date();
+    const minTime = Math.max(0, minutes - 2);
+    const maxTime = minutes + 2;
+    
+    const earlyTime = new Date(now.getTime() + minTime * 60000);
+    const lateTime = new Date(now.getTime() + maxTime * 60000);
+    
+    return {
+      clock: `${formatClockTime(earlyTime)} - ${formatClockTime(lateTime)}`,
+      relative: `${minTime}-${maxTime} min`
+    };
+  };
+
   const getTimeColor = (minutes: number) => {
     if (minutes <= 1) return 'text-transit-now';
     if (minutes <= 5) return 'text-transit-soon';
@@ -319,11 +343,17 @@ const StopCard = ({ stop, route, allRoutes, onClose, isClosing = false }: StopCa
                         "text-right",
                         getTimeColor(item.prediction.minutes)
                       )}>
-                        <div className="text-lg font-bold">
-                          {item.prediction.minutes === 0 ? 'NOW' : `${item.prediction.minutes}`}
-                        </div>
-                        {item.prediction.minutes > 0 && (
-                          <div className="text-xs opacity-70">min</div>
+                        {item.prediction.minutes === 0 ? (
+                          <div className="text-lg font-bold">NOW</div>
+                        ) : (
+                          <>
+                            <div className="text-sm font-bold">
+                              {getArrivalTimeRange(item.prediction.minutes).clock}
+                            </div>
+                            <div className="text-xs opacity-70">
+                              {getArrivalTimeRange(item.prediction.minutes).relative}
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
