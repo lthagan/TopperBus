@@ -11,6 +11,15 @@ interface BusMapProps {
   onStopClick: (stop: Stop, route: Route) => void;
 }
 
+// Different dash patterns for overlapping routes
+const ROUTE_STYLES: Record<number, { dashArray?: string; weight: number; offset: number }> = {
+  0: { weight: 5, offset: 0 },
+  1: { dashArray: '10, 6', weight: 4, offset: 3 },
+  2: { dashArray: '4, 8', weight: 4, offset: -3 },
+  3: { dashArray: '15, 5, 5, 5', weight: 3, offset: 5 },
+  4: { weight: 3, offset: -5 },
+};
+
 const BusMap = ({ routes, vehicles, selectedRoute, selectedStop, onStopClick }: BusMapProps) => {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -56,24 +65,112 @@ const BusMap = ({ routes, vehicles, selectedRoute, selectedStop, onStopClick }: 
     return routes;
   }, [routes, selectedRoute]);
 
+  // Helper function to offset a polyline
+  const offsetLatLngs = (latLngs: [number, number][], offsetMeters: number): [number, number][] => {
+    if (offsetMeters === 0 || latLngs.length < 2) return latLngs;
+    
+    const offsetLatLngsResult: [number, number][] = [];
+    
+    for (let i = 0; i < latLngs.length; i++) {
+      const current = latLngs[i];
+      let bearing: number;
+      
+      if (i === 0) {
+        // First point: use bearing to next point
+        bearing = calculateBearing(current, latLngs[i + 1]);
+      } else if (i === latLngs.length - 1) {
+        // Last point: use bearing from previous point
+        bearing = calculateBearing(latLngs[i - 1], current);
+      } else {
+        // Middle points: average of incoming and outgoing bearings
+        const bearingIn = calculateBearing(latLngs[i - 1], current);
+        const bearingOut = calculateBearing(current, latLngs[i + 1]);
+        bearing = (bearingIn + bearingOut) / 2;
+      }
+      
+      // Offset perpendicular to the bearing
+      const perpBearing = bearing + 90;
+      const offsetPoint = offsetPoint2(current, perpBearing, offsetMeters);
+      offsetLatLngsResult.push(offsetPoint);
+    }
+    
+    return offsetLatLngsResult;
+  };
+
+  const calculateBearing = (from: [number, number], to: [number, number]): number => {
+    const lat1 = from[0] * Math.PI / 180;
+    const lat2 = to[0] * Math.PI / 180;
+    const dLon = (to[1] - from[1]) * Math.PI / 180;
+    
+    const y = Math.sin(dLon) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    
+    return Math.atan2(y, x) * 180 / Math.PI;
+  };
+
+  const offsetPoint2 = (point: [number, number], bearing: number, distanceMeters: number): [number, number] => {
+    const R = 6371000; // Earth's radius in meters
+    const bearingRad = bearing * Math.PI / 180;
+    const lat1 = point[0] * Math.PI / 180;
+    const lon1 = point[1] * Math.PI / 180;
+    
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(distanceMeters / R) +
+      Math.cos(lat1) * Math.sin(distanceMeters / R) * Math.cos(bearingRad)
+    );
+    
+    const lon2 = lon1 + Math.atan2(
+      Math.sin(bearingRad) * Math.sin(distanceMeters / R) * Math.cos(lat1),
+      Math.cos(distanceMeters / R) - Math.sin(lat1) * Math.sin(lat2)
+    );
+    
+    return [lat2 * 180 / Math.PI, lon2 * 180 / Math.PI];
+  };
+
   // Update polylines (routes)
   useEffect(() => {
     if (!polylinesRef.current) return;
     polylinesRef.current.clearLayers();
 
-    displayedRoutes.forEach(route => {
+    displayedRoutes.forEach((route, routeIndex) => {
       const color = `#${route.color === '000000' ? '6B7280' : route.color}`;
+      const style = ROUTE_STYLES[routeIndex % Object.keys(ROUTE_STYLES).length];
       
       route.paths.forEach(path => {
         const latLngs = path.map(point => [point.lat, point.lon] as [number, number]);
-        L.polyline(latLngs, {
+        
+        // Apply offset when showing all routes
+        const offsetPath = selectedRoute ? latLngs : offsetLatLngs(latLngs, style.offset);
+        
+        // Add a white outline for better visibility
+        if (!selectedRoute) {
+          L.polyline(offsetPath, {
+            color: '#1a1f2e',
+            weight: style.weight + 3,
+            opacity: 0.8,
+          }).addTo(polylinesRef.current!);
+        }
+        
+        // Main route line
+        const polyline = L.polyline(offsetPath, {
           color,
-          weight: 4,
-          opacity: 0.8,
-        }).addTo(polylinesRef.current!);
+          weight: style.weight,
+          opacity: 0.9,
+          dashArray: style.dashArray,
+          lineCap: 'round',
+          lineJoin: 'round',
+        });
+        
+        // Add tooltip on hover
+        polyline.bindTooltip(route.title, {
+          sticky: true,
+          className: 'route-tooltip',
+        });
+        
+        polyline.addTo(polylinesRef.current!);
       });
     });
-  }, [displayedRoutes]);
+  }, [displayedRoutes, selectedRoute]);
 
   // Update stop markers
   useEffect(() => {

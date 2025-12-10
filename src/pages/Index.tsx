@@ -7,6 +7,7 @@ import RouteSelector from '@/components/RouteSelector';
 import StopCard from '@/components/StopCard';
 import StopList from '@/components/StopList';
 import QRScanner from '@/components/QRScanner';
+import RouteLegend from '@/components/RouteLegend';
 import { Bus, ScanLine, List, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -129,14 +130,14 @@ const Index = () => {
       <header className="flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-md z-10">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Bus className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-foreground">WKU Transit</h1>
                 <p className="text-xs text-muted-foreground">
-                  {vehicles.length} bus{vehicles.length !== 1 ? 'es' : ''} active
+                  Live tracking
                 </p>
               </div>
             </div>
@@ -160,6 +161,7 @@ const Index = () => {
           
           <RouteSelector
             routes={routes}
+            vehicles={vehicles}
             selectedRoute={selectedRoute}
             onSelectRoute={setSelectedRoute}
           />
@@ -210,6 +212,9 @@ const Index = () => {
             selectedStop={selectedStop}
             onStopClick={handleStopClick}
           />
+          {!selectedRoute && (
+            <RouteLegend routes={routes} vehicles={vehicles} />
+          )}
         </div>
 
         {/* Stop list sidebar */}
