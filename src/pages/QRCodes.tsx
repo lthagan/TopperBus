@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Route, Stop } from '@/types/transit';
@@ -33,19 +33,30 @@ const QRCodes = () => {
     return window.location.origin;
   };
 
-  const allStops = routes.flatMap(route => 
-    route.stops.map(stop => ({ stop, route }))
-  );
+  const stopsWithRoutes = useMemo(() => {
+    const stopMap = new Map<string, { stop: Stop; routes: Route[] }>();
+    
+    routes.forEach(route => {
+      route.stops.forEach(stop => {
+        const existing = stopMap.get(stop.stopId);
+        if (existing) {
+          if (!existing.routes.some(r => r.tag === route.tag)) {
+            existing.routes.push(route);
+          }
+        } else {
+          stopMap.set(stop.stopId, { stop, routes: [route] });
+        }
+      });
+    });
+    
+    return Array.from(stopMap.values());
+  }, [routes]);
 
-  const uniqueStops = Array.from(
-    new Map(allStops.map(item => [item.stop.stopId, item])).values()
-  );
-
-  const filteredStops = uniqueStops.filter(({ stop, route }) => {
+  const filteredStops = stopsWithRoutes.filter(({ stop, routes: stopRoutes }) => {
     const matchesSearch = search === '' || 
       stop.title.toLowerCase().includes(search.toLowerCase()) ||
       stop.stopId.toLowerCase().includes(search.toLowerCase());
-    const matchesRoute = !selectedRoute || route.tag === selectedRoute;
+    const matchesRoute = !selectedRoute || stopRoutes.some(r => r.tag === selectedRoute);
     return matchesSearch && matchesRoute;
   });
 
@@ -151,7 +162,7 @@ const QRCodes = () => {
 
       {/* QR Codes Grid */}
       <div ref={printRef} className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 print:grid-cols-2">
-        {filteredStops.map(({ stop, route }) => (
+        {filteredStops.map(({ stop, routes: stopRoutes }) => (
           <div 
             key={stop.stopId}
             className="bg-card rounded-xl p-4 border border-border print:break-inside-avoid"
@@ -172,19 +183,24 @@ const QRCodes = () => {
               <p className="text-xs text-muted-foreground mb-1">
                 Stop ID: {stop.stopId}
               </p>
-              <div 
-                className="text-xs px-2 py-0.5 rounded-full mb-3"
-                style={{ 
-                  backgroundColor: `#${route.color}20`,
-                  color: `#${route.color === '000000' ? '6B7280' : route.color}`
-                }}
-              >
-                {route.title}
+              <div className="flex flex-wrap justify-center gap-1 mb-3">
+                {stopRoutes.map(route => (
+                  <div 
+                    key={route.tag}
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{ 
+                      backgroundColor: `#${route.color}20`,
+                      color: `#${route.color === '000000' ? '6B7280' : route.color}`
+                    }}
+                  >
+                    {route.title}
+                  </div>
+                ))}
               </div>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => downloadQR(stop, route)}
+                onClick={() => downloadQR(stop, stopRoutes[0])}
                 className="print:hidden"
               >
                 <Download className="w-4 h-4 mr-2" />
