@@ -141,12 +141,29 @@ const Schedule = () => {
     return journeyStops;
   };
 
-  const formatTimeRange = (minutes: number | null): string => {
-    if (minutes === null) return '--';
-    if (minutes === 0) return 'Now';
+  const formatClockTime = (date: Date): string => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const formatTimeRange = (minutes: number | null): { clock: string; relative: string } => {
+    if (minutes === null) return { clock: '--', relative: '--' };
+    if (minutes === 0) return { clock: 'Now', relative: 'Now' };
+    
+    const now = new Date();
     const minTime = Math.max(0, minutes - 2);
     const maxTime = minutes + 2;
-    return `${minTime}-${maxTime} min`;
+    
+    const earlyTime = new Date(now.getTime() + minTime * 60000);
+    const lateTime = new Date(now.getTime() + maxTime * 60000);
+    
+    return {
+      clock: `${formatClockTime(earlyTime)} - ${formatClockTime(lateTime)}`,
+      relative: `${minTime}-${maxTime} min`
+    };
   };
 
   const displayedRoutes = selectedRoute 
@@ -345,12 +362,19 @@ const Schedule = () => {
                                 </p>
                               </div>
                               <div className={cn(
-                                "text-xs px-2 py-1 rounded-full whitespace-nowrap",
+                                "text-xs px-2 py-1 rounded-lg whitespace-nowrap text-right",
                                 stop.isCurrent 
                                   ? "bg-primary text-primary-foreground font-medium"
                                   : "bg-muted text-muted-foreground"
                               )}>
-                                {formatTimeRange(stop.estimatedMinutes)}
+                                {stop.isCurrent ? (
+                                  <span>Now</span>
+                                ) : (
+                                  <>
+                                    <div className="font-medium">{formatTimeRange(stop.estimatedMinutes).clock}</div>
+                                    <div className="opacity-70">{formatTimeRange(stop.estimatedMinutes).relative}</div>
+                                  </>
+                                )}
                               </div>
                             </Link>
                           ))}
