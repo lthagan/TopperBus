@@ -253,6 +253,7 @@ export const CAMPUS_BUILDINGS: CampusBuilding[] = [
     categories: ['dining', 'administrative'],
     department: 'Student Affairs',
     description: "The central hub for student life. Features the main food court, the WKU Store, a movie theater, and student organization offices.",
+    imageUrl?: 'https://www.wku.edu/dsu/images/hero-dsu-2.jpg'  
   },
 
   // === HEALTH ===
