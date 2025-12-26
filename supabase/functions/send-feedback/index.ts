@@ -33,6 +33,28 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
+// Sanitize text to prevent Discord markdown injection
+function sanitizeForDiscord(text: string): string {
+  // Escape Discord markdown characters
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_')
+    .replace(/~/g, '\\~')
+    .replace(/`/g, '\\`')
+    .replace(/\|/g, '\\|')
+    .replace(/@/g, '＠') // Replace @ to prevent mentions
+    .replace(/<@/g, '<＠') // Prevent user/role mentions
+    .replace(/<#/g, '<＃') // Prevent channel mentions
+    .replace(/<:/g, '<：'); // Prevent custom emoji injection
+}
+
+// Validate email format
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email) && email.length <= 255;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -52,14 +74,59 @@ serve(async (req) => {
       );
     }
 
-    const { type, message, email }: FeedbackRequest = await req.json();
-
-    // Validate type
-    if (!['suggestion', 'bug', 'feedback'].includes(type)) {
+    // Parse and validate request body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
       return new Response(
-        JSON.stringify({ error: 'Invalid feedback type' }),
+        JSON.stringify({ error: 'Invalid JSON body' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Type validation
+    if (typeof body !== 'object' || body === null) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { type, message, email } = body as FeedbackRequest;
+
+    // Validate type
+    if (!type || !['suggestion', 'bug', 'feedback'].includes(type)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid feedback type. Must be one of: suggestion, bug, feedback' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate message
+    if (!message || typeof message !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Message is required and must be a string' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const trimmedMessage = message.trim();
+    if (trimmedMessage.length < 10 || trimmedMessage.length > 2000) {
+      return new Response(
+        JSON.stringify({ error: 'Message must be between 10 and 2000 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate email if provided
+    if (email !== undefined && email !== null && email !== '') {
+      if (typeof email !== 'string' || !isValidEmail(email)) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid email format' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Route to appropriate webhook based on feedback type
@@ -74,23 +141,8 @@ serve(async (req) => {
     if (!discordWebhookUrl) {
       console.error(`Webhook not configured for type: ${type}`);
       return new Response(
-        JSON.stringify({ error: 'Webhook not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!message || typeof message !== 'string' || message.trim().length < 10 || message.length > 2000) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid message length' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate email if provided
-    if (email && (typeof email !== 'string' || email.length > 255)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid email' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Service temporarily unavailable' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -106,12 +158,16 @@ serve(async (req) => {
       feedback: 0x3B82F6
     };
 
+    // Sanitize content before sending to Discord
+    const sanitizedMessage = sanitizeForDiscord(trimmedMessage);
+    const sanitizedEmail = email ? sanitizeForDiscord(email.trim()) : null;
+
     const discordMessage = {
       embeds: [{
         title: `${typeEmoji[type]} New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
-        description: message.slice(0, 2000),
+        description: sanitizedMessage.slice(0, 2000),
         color: typeColor[type],
-        fields: email ? [{ name: "📧 Contact Email", value: email, inline: false }] : [],
+        fields: sanitizedEmail ? [{ name: "📧 Contact Email", value: sanitizedEmail, inline: false }] : [],
         footer: { text: "WKU Transit Feedback" },
         timestamp: new Date().toISOString()
       }]
@@ -128,7 +184,10 @@ serve(async (req) => {
     if (!discordResponse.ok) {
       const errorText = await discordResponse.text();
       console.error('Discord webhook error:', errorText);
-      throw new Error('Failed to send to Discord');
+      return new Response(
+        JSON.stringify({ error: 'Failed to submit feedback. Please try again later.' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('Feedback sent successfully');
@@ -139,9 +198,8 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     console.error('Error in send-feedback function:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

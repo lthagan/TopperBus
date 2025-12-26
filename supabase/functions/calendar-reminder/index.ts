@@ -11,6 +11,38 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authorization - this function should only be called by cron jobs or authenticated admins
+    const authHeader = req.headers.get('Authorization');
+    const expectedSecret = Deno.env.get('CALENDAR_REMINDER_SECRET');
+    
+    // If a secret is configured, require it for authentication
+    if (expectedSecret) {
+      if (!authHeader) {
+        console.error('Missing Authorization header');
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Accept either "Bearer <secret>" or just the secret directly
+      const providedToken = authHeader.replace('Bearer ', '').trim();
+      
+      if (providedToken !== expectedSecret) {
+        console.error('Invalid authorization token');
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // If no secret is configured, check for Supabase service role key
+      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+      if (!authHeader || !authHeader.includes(supabaseAnonKey || '')) {
+        console.warn('CALENDAR_REMINDER_SECRET not configured - using fallback auth check');
+      }
+    }
+
     const discordWebhookUrl = Deno.env.get('DISCORD_WEBHOOK_URL');
     
     if (!discordWebhookUrl) {
@@ -57,8 +89,8 @@ serve(async (req) => {
       const errorText = await discordResponse.text();
       console.error('Discord API error:', errorText);
       return new Response(
-        JSON.stringify({ success: false, error: `Discord error: ${discordResponse.status}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Failed to send notification' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -71,9 +103,8 @@ serve(async (req) => {
     
   } catch (error: unknown) {
     console.error('Error in calendar-reminder function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
