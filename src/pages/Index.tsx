@@ -279,16 +279,33 @@ const Index = () => {
             
             if (inactiveRoutes.length === 0) return null;
             
+            // Check if Kentucky Street route is among the inactive routes
+            const kentuckyRoute = inactiveRoutes.find(r => r.tag === 'blue' || r.title.toLowerCase().includes('kentucky'));
+            const otherInactiveRoutes = inactiveRoutes.filter(r => r.tag !== 'blue' && !r.title.toLowerCase().includes('kentucky'));
+            
             return (
-              <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-200/90">
-                  <span className="font-medium">Note:</span>{' '}
-                  {inactiveRoutes.length === 1 
-                    ? `${inactiveRoutes[0].title} data is currently not being updated by the transit system.`
-                    : `${inactiveRoutes.map(r => r.title.replace('Route ', '')).join(', ')} routes data is currently not being updated.`
-                  } Live tracking may be unavailable.
-                </p>
+              <div className="mt-3 space-y-2">
+                {kentuckyRoute && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-200/90">
+                      <span className="font-medium">Note:</span> {kentuckyRoute.title} tracking is unavailable due to faulty GPS devices on buses. Contact the Transportation office at{' '}
+                      <a href="mailto:transportation@wku.edu" className="underline hover:text-amber-100">transportation@wku.edu</a> to voice your concern.
+                    </p>
+                  </div>
+                )}
+                {otherInactiveRoutes.length > 0 && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-200/90">
+                      <span className="font-medium">Note:</span>{' '}
+                      {otherInactiveRoutes.length === 1 
+                        ? `${otherInactiveRoutes[0].title} data is currently not being updated by the transit system.`
+                        : `${otherInactiveRoutes.map(r => r.title.replace('Route ', '')).join(', ')} routes data is currently not being updated.`
+                      } Live tracking may be unavailable.
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })()}
