@@ -17,17 +17,25 @@ serve(async (req) => {
   }
 
   try {
-    const discordWebhookUrl = Deno.env.get('DISCORD_WEBHOOK_URL');
+    const { type, message, email }: FeedbackRequest = await req.json();
+
+    // Route to appropriate webhook based on feedback type
+    const webhookMap = {
+      suggestion: Deno.env.get('DISCORD_WEBHOOK_SUGGESTIONS'),
+      bug: Deno.env.get('DISCORD_WEBHOOK_BUGS'),
+      feedback: Deno.env.get('DISCORD_WEBHOOK_FEEDBACK'),
+    };
+
+    const discordWebhookUrl = webhookMap[type];
     
     if (!discordWebhookUrl) {
-      console.error('DISCORD_WEBHOOK_URL not configured');
+      console.error(`Webhook not configured for type: ${type}`);
       return new Response(
         JSON.stringify({ error: 'Webhook not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { type, message, email }: FeedbackRequest = await req.json();
 
     if (!message || message.trim().length < 10) {
       return new Response(
