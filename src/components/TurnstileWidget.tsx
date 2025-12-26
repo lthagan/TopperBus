@@ -42,11 +42,7 @@ const TurnstileWidget = ({ onVerify, onError, onExpire }: TurnstileWidgetProps) 
       widgetIdRef.current = null;
     }
 
-    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-    if (!siteKey) {
-      console.error('VITE_TURNSTILE_SITE_KEY not configured');
-      return;
-    }
+    const siteKey = '0x4AAAAAACJIxGE8exIgnsxn';
 
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
