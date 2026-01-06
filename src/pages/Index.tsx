@@ -99,6 +99,10 @@ const Index = () => {
   const openStop = useCallback((stop: Stop, route: Route, shouldSwitchToMap: boolean = false) => {
     setSelectedStop(stop);
     setSelectedStopRoute(route);
+    // Close other cards
+    setSelectedBuilding(null);
+    setSelectedVehicle(null);
+    setSelectedVehicleRoute(null);
     setSearchParams({ stop: stop.stopId });
     if (shouldSwitchToMap) {
       setView('map');
