@@ -2,8 +2,19 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Route, VehicleLocation, StopPredictions } from '@/types/transit';
 import { fetchRouteConfig, fetchVehicleLocations, fetchPredictions } from '@/lib/api';
-import { ArrowLeft, Bus, Clock, MapPin, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Bus, Clock, MapPin, AlertCircle, CheckCircle, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 interface BusJourneyStop {
   tag: string;
@@ -35,6 +46,43 @@ const isRouteInService = (routeTag: string): boolean => {
   const endMinutes = schedule.endHour * 60 + schedule.endMin;
   
   return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+};
+
+// Route-specific operating hours (extracted for header display)
+const SCHEDULE_DATA: Record<string, { 
+  firstBus: string; 
+  lastBus: string; 
+  frequency: { time: string; freq: string }[];
+  startStop: string;
+}> = {
+  'red': { // Campus Circulator
+    firstBus: '7:30 AM',
+    lastBus: '5:30 PM',
+    frequency: [
+      { time: '7:30AM - 10:35AM', freq: '18 min' },
+      { time: '10:35AM - 2:50PM', freq: '20 min' },
+      { time: '2:50PM - 5:21PM', freq: '39 min' },
+    ],
+    startStop: 'Russellville Rd West Lot',
+  },
+  'white': { // South Campus
+    firstBus: '7:15 AM',
+    lastBus: '5:24 PM',
+    frequency: [
+      { time: '7:15AM - 3:00PM', freq: '17 min' },
+      { time: '3:00PM - 5:24PM', freq: '35 min' },
+    ],
+    startStop: 'Campbell Lane Park & Ride',
+  },
+  'blue': { // Kentucky Street
+    firstBus: '7:20 AM',
+    lastBus: '5:30 PM',
+    frequency: [
+      { time: '7:20AM - 3:30PM', freq: '15 min' },
+      { time: '3:30PM - 5:30PM', freq: '30 min' },
+    ],
+    startStop: 'Parking Structure 3',
+  },
 };
 
 const Schedule = () => {
@@ -271,99 +319,67 @@ const Schedule = () => {
       </header>
 
       {/* Routes */}
-      <div className="p-4 space-y-6">
-        {displayedRoutes.map(route => {
-          const routeVehicles = getRouteVehicles(route.tag);
-          const color = route.color === '000000' ? '6B7280' : route.color;
-          
-          return (
-            <div key={route.tag} className="bg-card rounded-xl border border-border overflow-hidden">
-              {/* Route header */}
-              <div 
-                className="p-4 flex items-center justify-between"
-                style={{ backgroundColor: `#${color}15` }}
+      <div className="p-4 space-y-4">
+        <Accordion type="multiple" className="space-y-4">
+          {displayedRoutes.map(route => {
+            const routeVehicles = getRouteVehicles(route.tag);
+            const color = route.color === '000000' ? '6B7280' : route.color;
+            const schedule = SCHEDULE_DATA[route.tag] || {
+              firstBus: '7:00 AM',
+              lastBus: '5:30 PM',
+              frequency: [],
+              startStop: 'Main Campus',
+            };
+            
+            return (
+              <AccordionItem 
+                key={route.tag} 
+                value={route.tag}
+                className="bg-card rounded-xl border border-border overflow-hidden"
               >
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-10 h-10 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `#${color}` }}
-                  >
-                    <Bus className="w-5 h-5 text-white" />
+                {/* Route header - clickable accordion trigger */}
+                <AccordionTrigger 
+                  className="p-4 hover:no-underline [&>svg]:hidden"
+                  style={{ backgroundColor: `#${color}15` }}
+                >
+                  <div className="flex items-center justify-between w-full pr-2">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-10 h-10 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: `#${color}` }}
+                      >
+                        <Bus className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <h2 className="font-semibold">{route.title}</h2>
+                        <p className="text-xs text-muted-foreground">
+                          {schedule.firstBus} - {schedule.lastBus} • {route.stops.length} stops
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isRouteInService(route.tag) ? (
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-400 text-sm">
+                          <Clock className="w-4 h-4" />
+                          Outside Hours
+                        </span>
+                      ) : routeVehicles.length > 0 ? (
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 text-green-400 text-sm">
+                          <CheckCircle className="w-4 h-4" />
+                          {routeVehicles.length} Active
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 text-red-400 text-sm">
+                          <AlertCircle className="w-4 h-4" />
+                          No Service
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-semibold">{route.title}</h2>
-                    <p className="text-xs text-muted-foreground">
-                      {route.stops.length} stops • {route.directions.length} directions
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!isRouteInService(route.tag) ? (
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-400 text-sm">
-                      <Clock className="w-4 h-4" />
-                      Outside Hours
-                    </span>
-                  ) : routeVehicles.length > 0 ? (
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 text-green-400 text-sm">
-                      <CheckCircle className="w-4 h-4" />
-                      {routeVehicles.length} Active
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 text-red-400 text-sm">
-                      <AlertCircle className="w-4 h-4" />
-                      No Service
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Operating Hours */}
-              {(() => {
-                // Route-specific operating hours
-                const scheduleData: Record<string, { 
-                  firstBus: string; 
-                  lastBus: string; 
-                  frequency: { time: string; freq: string }[];
-                  startStop: string;
-                }> = {
-                  'red': { // Campus Circulator
-                    firstBus: '7:30 AM',
-                    lastBus: '5:30 PM',
-                    frequency: [
-                      { time: '7:30AM - 10:35AM', freq: '18 min' },
-                      { time: '10:35AM - 2:50PM', freq: '20 min' },
-                      { time: '2:50PM - 5:21PM', freq: '39 min' },
-                    ],
-                    startStop: 'Russellville Rd West Lot',
-                  },
-                  'white': { // South Campus
-                    firstBus: '7:15 AM',
-                    lastBus: '5:24 PM',
-                    frequency: [
-                      { time: '7:15AM - 3:00PM', freq: '17 min' },
-                      { time: '3:00PM - 5:24PM', freq: '35 min' },
-                    ],
-                    startStop: 'Campbell Lane Park & Ride',
-                  },
-                  'blue': { // Kentucky Street
-                    firstBus: '7:20 AM',
-                    lastBus: '5:30 PM',
-                    frequency: [
-                      { time: '7:20AM - 3:30PM', freq: '15 min' },
-                      { time: '3:30PM - 5:30PM', freq: '30 min' },
-                    ],
-                    startStop: 'Parking Structure 3',
-                  },
-                };
+                </AccordionTrigger>
                 
-                const schedule = scheduleData[route.tag] || {
-                  firstBus: '7:00 AM',
-                  lastBus: '5:30 PM',
-                  frequency: [],
-                  startStop: 'Main Campus',
-                };
-                
-                return (
+                <AccordionContent className="pb-0">
+                  {/* Operating Hours */}
                   <div className="border-t border-border p-4 bg-secondary/20">
                     <h3 className="text-sm font-medium flex items-center gap-2 mb-3">
                       <Clock className="w-4 h-4 text-muted-foreground" />
@@ -404,160 +420,168 @@ const Schedule = () => {
                       Monday - Friday during Fall & Spring semesters • No service during Intersession or Holidays
                     </p>
                   </div>
-                );
-              })()}
 
-              {/* Active buses - only show if route is in service */}
-              {isRouteInService(route.tag) && routeVehicles.length > 0 && (
-                <div className="border-b border-border p-4 space-y-4">
-                  <h3 className="text-sm font-medium flex items-center gap-2">
-                    <Bus className="w-4 h-4" />
-                    Active Buses
-                  </h3>
-                  {routeVehicles.map(vehicle => {
-                    const speedMph = Math.round(vehicle.speedKmHr * 0.621371);
-                    const journey = getBusJourney(vehicle, route);
-                    const currentStop = journey.find(s => s.isCurrent);
-                    
-                    return (
-                      <div 
-                        key={vehicle.id}
-                        className="rounded-lg bg-secondary/50 overflow-hidden"
-                      >
-                        {/* Bus header */}
-                        <div className="px-4 py-3 flex items-center justify-between bg-secondary">
-                          <div className="flex items-center gap-3">
-                            <div 
-                              className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                              style={{ backgroundColor: `#${color}` }}
-                            >
-                              {vehicle.id}
-                            </div>
-                            <div>
-                              <span className="font-semibold">Bus {vehicle.id}</span>
-                              <span className="text-xs text-muted-foreground ml-2">
-                                {speedMph} mph
-                              </span>
-                            </div>
-                          </div>
-                          {currentStop && (
-                            <div className="text-right">
-                              <p className="text-xs text-muted-foreground">Currently at</p>
-                              <p className="text-sm font-medium text-primary truncate max-w-[150px]">
-                                {currentStop.title}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Journey stops */}
-                        <div className="relative px-4 py-2 max-h-[300px] overflow-y-auto">
-                          <div 
-                            className="absolute left-7 top-0 bottom-0 w-0.5"
-                            style={{ backgroundColor: `#${color}40` }}
-                          />
-                          {journey.map((stop, index) => (
-                            <Link
-                              key={`${vehicle.id}-${stop.tag}-${index}`}
-                              to={`/?stop=${stop.stopId}`}
-                              className={cn(
-                                "flex items-center gap-3 py-2 relative transition-colors hover:bg-secondary/50 rounded",
-                                stop.isCurrent && "bg-primary/10"
-                              )}
-                            >
-                              <div 
-                                className={cn(
-                                  "w-3 h-3 rounded-full border-2 z-10",
-                                  stop.isCurrent ? "bg-primary border-primary" : "bg-background"
-                                )}
-                                style={{ borderColor: stop.isCurrent ? undefined : `#${color}` }}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className={cn(
-                                  "text-sm truncate",
-                                  stop.isCurrent && "font-semibold text-primary"
-                                )}>
-                                  {stop.title}
-                                </p>
-                              </div>
-                              <div className={cn(
-                                "text-xs px-2 py-1 rounded-lg whitespace-nowrap text-right",
-                                stop.isCurrent 
-                                  ? "bg-primary text-primary-foreground font-medium"
-                                  : "bg-muted text-muted-foreground"
-                              )}>
-                                {stop.isCurrent ? (
-                                  <span>Now</span>
-                                ) : (
-                                  <>
-                                    <div className="font-medium">{formatTimeRange(stop.estimatedMinutes).clock}</div>
-                                    <div className="opacity-70">{formatTimeRange(stop.estimatedMinutes).relative}</div>
-                                  </>
-                                )}
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                        
-                        <div className="px-4 py-2 bg-muted/30 border-t border-border">
-                          <p className="text-xs text-muted-foreground text-center">
-                            Times are estimates with ±2 minute margin
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Directions / Full schedule */}
-              {route.directions.filter(d => d.useForUI).map(direction => (
-                <div key={direction.tag} className="border-t border-border">
-                  <div className="px-4 py-3 bg-secondary/30">
-                    <h3 className="text-sm font-medium flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      {direction.title}
-                    </h3>
-                  </div>
-                  
-                  {/* Stop list */}
-                  <div className="relative">
-                    <div 
-                      className="absolute left-7 top-0 bottom-0 w-0.5"
-                      style={{ backgroundColor: `#${color}30` }}
-                    />
-                    <div className="py-2">
-                      {direction.stops.map((stopTag, index) => {
-                        const stop = route.stops.find(s => s.tag === stopTag);
-                        if (!stop) return null;
+                  {/* Active buses - only show if route is in service */}
+                  {isRouteInService(route.tag) && routeVehicles.length > 0 && (
+                    <div className="border-t border-border p-4 space-y-4">
+                      <h3 className="text-sm font-medium flex items-center gap-2">
+                        <Bus className="w-4 h-4" />
+                        Active Buses
+                      </h3>
+                      {routeVehicles.map(vehicle => {
+                        const speedMph = Math.round(vehicle.speedKmHr * 0.621371);
+                        const journey = getBusJourney(vehicle, route);
+                        const currentStop = journey.find(s => s.isCurrent);
                         
                         return (
-                          <Link
-                            key={`${direction.tag}-${stopTag}-${index}`}
-                            to={`/?stop=${stop.stopId}`}
-                            className="flex items-center gap-3 px-4 py-2 hover:bg-secondary/50 transition-colors relative"
+                          <div 
+                            key={vehicle.id}
+                            className="rounded-lg bg-secondary/50 overflow-hidden"
                           >
-                            <div 
-                              className="w-3 h-3 rounded-full border-2 bg-background z-10"
-                              style={{ borderColor: `#${color}` }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm truncate">{stop.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Stop #{stop.stopId}
+                            {/* Bus header */}
+                            <div className="px-4 py-3 flex items-center justify-between bg-secondary">
+                              <div className="flex items-center gap-3">
+                                <div 
+                                  className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                  style={{ backgroundColor: `#${color}` }}
+                                >
+                                  {vehicle.id}
+                                </div>
+                                <div>
+                                  <span className="font-semibold">Bus {vehicle.id}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    {speedMph} mph
+                                  </span>
+                                </div>
+                              </div>
+                              {currentStop && (
+                                <div className="text-right">
+                                  <p className="text-xs text-muted-foreground">Currently at</p>
+                                  <p className="text-sm font-medium text-primary truncate max-w-[150px]">
+                                    {currentStop.title}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Journey stops */}
+                            <div className="relative px-4 py-2 max-h-[300px] overflow-y-auto">
+                              <div 
+                                className="absolute left-7 top-0 bottom-0 w-0.5"
+                                style={{ backgroundColor: `#${color}40` }}
+                              />
+                              {journey.map((stop, index) => (
+                                <Link
+                                  key={`${vehicle.id}-${stop.tag}-${index}`}
+                                  to={`/?stop=${stop.stopId}`}
+                                  className={cn(
+                                    "flex items-center gap-3 py-2 relative transition-colors hover:bg-secondary/50 rounded",
+                                    stop.isCurrent && "bg-primary/10"
+                                  )}
+                                >
+                                  <div 
+                                    className={cn(
+                                      "w-3 h-3 rounded-full border-2 z-10",
+                                      stop.isCurrent ? "bg-primary border-primary" : "bg-background"
+                                    )}
+                                    style={{ borderColor: stop.isCurrent ? undefined : `#${color}` }}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className={cn(
+                                      "text-sm truncate",
+                                      stop.isCurrent && "font-semibold text-primary"
+                                    )}>
+                                      {stop.title}
+                                    </p>
+                                  </div>
+                                  <div className={cn(
+                                    "text-xs px-2 py-1 rounded-lg whitespace-nowrap text-right",
+                                    stop.isCurrent 
+                                      ? "bg-primary text-primary-foreground font-medium"
+                                      : "bg-muted text-muted-foreground"
+                                  )}>
+                                    {stop.isCurrent ? (
+                                      <span>Now</span>
+                                    ) : (
+                                      <>
+                                        <div className="font-medium">{formatTimeRange(stop.estimatedMinutes).clock}</div>
+                                        <div className="opacity-70">{formatTimeRange(stop.estimatedMinutes).relative}</div>
+                                      </>
+                                    )}
+                                  </div>
+                                </Link>
+                              ))}
+                            </div>
+                            
+                            <div className="px-4 py-2 bg-muted/30 border-t border-border">
+                              <p className="text-xs text-muted-foreground text-center">
+                                Times are estimates with ±2 minute margin
                               </p>
                             </div>
-                            <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                          </Link>
+                          </div>
                         );
                       })}
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })}
+                  )}
+
+                  {/* Directions / Stops - Collapsible */}
+                  {route.directions.filter(d => d.useForUI).map(direction => (
+                    <Collapsible key={direction.tag} className="border-t border-border">
+                      <CollapsibleTrigger className="w-full px-4 py-3 bg-secondary/30 hover:bg-secondary/50 transition-colors flex items-center justify-between group">
+                        <h3 className="text-sm font-medium flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-muted-foreground" />
+                          {direction.title}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {direction.stops.length} stops
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                        </div>
+                      </CollapsibleTrigger>
+                      
+                      <CollapsibleContent>
+                        {/* Stop list */}
+                        <div className="relative">
+                          <div 
+                            className="absolute left-7 top-0 bottom-0 w-0.5"
+                            style={{ backgroundColor: `#${color}30` }}
+                          />
+                          <div className="py-2">
+                            {direction.stops.map((stopTag, index) => {
+                              const stop = route.stops.find(s => s.tag === stopTag);
+                              if (!stop) return null;
+                              
+                              return (
+                                <Link
+                                  key={`${direction.tag}-${stopTag}-${index}`}
+                                  to={`/?stop=${stop.stopId}`}
+                                  className="flex items-center gap-3 px-4 py-2 hover:bg-secondary/50 transition-colors relative"
+                                >
+                                  <div 
+                                    className="w-3 h-3 rounded-full border-2 bg-background z-10"
+                                    style={{ borderColor: `#${color}` }}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm truncate">{stop.title}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Stop #{stop.stopId}
+                                    </p>
+                                  </div>
+                                  <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
       </div>
     </div>
   );
