@@ -11,7 +11,8 @@ import QRScanner from '@/components/QRScanner';
 import RouteLegend from '@/components/RouteLegend';
 import BuildingCard from '@/components/BuildingCard';
 import { CampusBuilding } from '@/lib/campusBuildings';
-import { Bus, ScanLine, List, Map as MapIcon, RefreshCw, Calendar, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Bus, ScanLine, List, Map as MapIcon, RefreshCw, Calendar, AlertTriangle, MessageSquare, Locate, X } from 'lucide-react';
+import BuildingSearch from '@/components/BuildingSearch';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -267,6 +268,41 @@ const Index = () => {
             </div>
           </div>
           
+          {/* Building search and location */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex-1">
+              <BuildingSearch
+                onBuildingSelect={handleBuildingClick}
+                onGetDirections={handleGetDirections}
+                selectedBuilding={selectedBuilding}
+                hasUserLocation={!!userLocation}
+              />
+            </div>
+            <button
+              onClick={handleGetLocation}
+              disabled={isLocating}
+              className={cn(
+                "p-2.5 rounded-xl transition-colors flex-shrink-0",
+                userLocation 
+                  ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30" 
+                  : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80",
+                isLocating && "animate-pulse"
+              )}
+              title={userLocation ? "Location enabled" : "Get my location"}
+            >
+              <Locate className="w-5 h-5" />
+            </button>
+            {directionsDestination && (
+              <button
+                onClick={() => setDirectionsDestination(null)}
+                className="p-2.5 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors flex-shrink-0"
+                title="Clear directions"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+
           <RouteSelector
             routes={routes}
             vehicles={vehicles}
