@@ -37,6 +37,8 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
     setDragTranslateY(0);
   };
 
+  const isCollapsed = panelHeight <= collapsedHeight + 2;
+
   useEffect(() => {
     const handleDragMove = (e: MouseEvent | TouchEvent) => {
       if (!isDragging) return;
@@ -46,14 +48,12 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       const windowHeight = window.innerHeight;
       const deltaPercent = (deltaY / windowHeight) * 100;
       
-      // Calculate new height (dragging down = smaller panel = positive deltaY = subtract from height)
+      // Swipe UP (negative deltaY) = shrink panel, swipe DOWN (positive deltaY) = expand panel
       const newHeight = dragStartHeight.current - deltaPercent;
       
-      // If trying to drag beyond max, show translate effect for dismiss gesture
-      if (newHeight > maxHeight) {
-        const overDrag = newHeight - maxHeight;
-        setDragTranslateY(overDrag * 2); // Translate down for dismiss
-        setPanelHeight(maxHeight);
+      // If already collapsed and trying to shrink more (swipe up), prepare for dismiss
+      if (isCollapsed && deltaY < 0) {
+        setDragTranslateY(deltaY); // Translate up for dismiss
         return;
       }
       
@@ -65,8 +65,8 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       if (!isDragging) return;
       setIsDragging(false);
       
-      // If dragged down significantly past max, dismiss
-      if (dragTranslateY > 50) {
+      // If collapsed and swiped up significantly, dismiss
+      if (isCollapsed && dragTranslateY < -50) {
         handleClose();
         return;
       }
@@ -100,14 +100,12 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       window.removeEventListener('touchmove', handleDragMove);
       window.removeEventListener('touchend', handleDragEnd);
     };
-  }, [isDragging, panelHeight, dragTranslateY]);
+  }, [isDragging, panelHeight, dragTranslateY, isCollapsed]);
 
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(onClose, 200);
   };
-
-  const isCollapsed = panelHeight <= collapsedHeight + 2;
 
   return (
     <>
@@ -170,7 +168,10 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
                     </svg>
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {building.name}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-xs font-bold">
                         {building.abbreviation}
                       </span>
@@ -179,10 +180,11 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
                           {CATEGORY_ICONS[cat].label}
                         </span>
                       ))}
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="w-3 h-3" />
+                        {building.lat.toFixed(5)}, {building.lon.toFixed(5)}
+                      </span>
                     </div>
-                    <h3 className="text-lg font-semibold text-foreground mt-1">
-                      {building.name}
-                    </h3>
                   </div>
                 </div>
                 <button
@@ -214,17 +216,6 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
                 <div>
                   <p className="text-xs text-muted-foreground">Department</p>
                   <p className="font-medium text-sm">{building.department}</p>
-                </div>
-              </div>
-
-              {/* Location */}
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary mb-3">
-                <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Location</p>
-                  <p className="font-medium text-sm">{building.lat.toFixed(5)}, {building.lon.toFixed(5)}</p>
                 </div>
               </div>
 

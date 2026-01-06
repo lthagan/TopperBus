@@ -191,6 +191,8 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
     }
   }, [sortedPredictions.length, hasRouteFilters, isDragging, minHeight]);
 
+  const isCollapsed = (panelHeight || minHeight) <= COLLAPSED_HEIGHT + 2;
+
   // Drag handlers - tracks Y position for swipe-to-minimize/dismiss
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
@@ -209,14 +211,12 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
       const windowHeight = window.innerHeight;
       const deltaPercent = (deltaY / windowHeight) * 100;
       
-      // Calculate new height (dragging down = smaller panel = positive deltaY = subtract from height)
+      // Swipe UP (negative deltaY) = shrink panel, swipe DOWN (positive deltaY) = expand panel
       const newHeight = dragStartHeight.current - deltaPercent;
       
-      // If trying to drag beyond max, show translate effect for dismiss gesture
-      if (newHeight > MAX_HEIGHT) {
-        const overDrag = newHeight - MAX_HEIGHT;
-        setDragTranslateY(overDrag * 2); // Translate down for dismiss
-        setPanelHeight(MAX_HEIGHT);
+      // If already collapsed and trying to shrink more (swipe up), prepare for dismiss
+      if (isCollapsed && deltaY < 0) {
+        setDragTranslateY(deltaY); // Translate up for dismiss
         return;
       }
       
@@ -228,8 +228,8 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
       if (!isDragging) return;
       setIsDragging(false);
       
-      // If dragged down significantly past max, dismiss
-      if (dragTranslateY > 50) {
+      // If collapsed and swiped up significantly, dismiss
+      if (isCollapsed && dragTranslateY < -50) {
         handleClose();
         return;
       }
@@ -263,15 +263,12 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
       window.removeEventListener('touchmove', handleDragMove);
       window.removeEventListener('touchend', handleDragEnd);
     };
-  }, [isDragging, panelHeight, minHeight, dragTranslateY]);
+  }, [isDragging, panelHeight, minHeight, dragTranslateY, isCollapsed]);
 
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(onClose, 200);
   };
-
-  const isCollapsed = (panelHeight || minHeight) <= COLLAPSED_HEIGHT + 2;
-
   const getNearestStopForBus = (vehicleId: string, routeTag: string): string | null => {
     const vehicle = vehicles.find(v => v.id === vehicleId && v.routeTag === routeTag);
     if (!vehicle) return null;
