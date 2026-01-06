@@ -3,11 +3,77 @@ import { Route, Stop, Direction, PathPoint, VehicleLocation, StopPredictions, Pr
 const API_BASE = 'https://retro.umoiq.com/service/publicXMLFeed';
 const AGENCY = 'wku';
 
+// Maximum XML response size (1MB) to prevent DoS attacks
+const MAX_RESPONSE_SIZE = 1024 * 1024;
+
+/**
+ * Sanitizes a string value extracted from XML to prevent XSS and injection attacks.
+ * Removes control characters and trims whitespace.
+ */
+function sanitizeXMLValue(value: string | null): string {
+  if (!value) return '';
+  // Remove control characters (except newlines/tabs), trim, and limit length
+  return value
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .trim()
+    .slice(0, 500); // Reasonable max length for stop/route names
+}
+
+/**
+ * Safely parses a numeric value from XML, returning a default if invalid.
+ */
+function safeParseFloat(value: string | null, defaultValue: number = 0): number {
+  if (!value) return defaultValue;
+  const parsed = parseFloat(value);
+  return isNaN(parsed) || !isFinite(parsed) ? defaultValue : parsed;
+}
+
+/**
+ * Safely parses an integer value from XML, returning a default if invalid.
+ */
+function safeParseInt(value: string | null, defaultValue: number = 0): number {
+  if (!value) return defaultValue;
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) || !isFinite(parsed) ? defaultValue : parsed;
+}
+
 async function fetchXML(url: string): Promise<Document> {
   const response = await fetch(url);
+  
+  // Validate response status
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`);
+  }
+  
+  // Validate content type is XML
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('xml') && !contentType.includes('text/plain')) {
+    throw new Error(`Unexpected content type: ${contentType}`);
+  }
+  
+  // Check content length to prevent DoS
+  const contentLength = response.headers.get('content-length');
+  if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_SIZE) {
+    throw new Error('Response too large');
+  }
+  
   const text = await response.text();
+  
+  // Validate response size after fetching (in case content-length header was missing)
+  if (text.length > MAX_RESPONSE_SIZE) {
+    throw new Error('Response too large');
+  }
+  
   const parser = new DOMParser();
-  return parser.parseFromString(text, 'text/xml');
+  const doc = parser.parseFromString(text, 'text/xml');
+  
+  // Check for XML parsing errors
+  const parseError = doc.querySelector('parsererror');
+  if (parseError) {
+    throw new Error('Failed to parse XML response');
+  }
+  
+  return doc;
 }
 
 export async function fetchRouteConfig(): Promise<Route[]> {
@@ -21,41 +87,41 @@ export async function fetchRouteConfig(): Promise<Route[]> {
     const directions: Direction[] = [];
     const paths: PathPoint[][] = [];
     
-    // Parse stops
+    // Parse stops with sanitization
     routeEl.querySelectorAll(':scope > stop').forEach(stopEl => {
       stops.push({
-        tag: stopEl.getAttribute('tag') || '',
-        title: stopEl.getAttribute('title') || '',
-        shortTitle: stopEl.getAttribute('shortTitle') || undefined,
-        lat: parseFloat(stopEl.getAttribute('lat') || '0'),
-        lon: parseFloat(stopEl.getAttribute('lon') || '0'),
-        stopId: stopEl.getAttribute('stopId') || '',
+        tag: sanitizeXMLValue(stopEl.getAttribute('tag')),
+        title: sanitizeXMLValue(stopEl.getAttribute('title')),
+        shortTitle: stopEl.getAttribute('shortTitle') ? sanitizeXMLValue(stopEl.getAttribute('shortTitle')) : undefined,
+        lat: safeParseFloat(stopEl.getAttribute('lat')),
+        lon: safeParseFloat(stopEl.getAttribute('lon')),
+        stopId: sanitizeXMLValue(stopEl.getAttribute('stopId')),
       });
     });
     
-    // Parse directions
+    // Parse directions with sanitization
     routeEl.querySelectorAll('direction').forEach(dirEl => {
       const dirStops: string[] = [];
       dirEl.querySelectorAll('stop').forEach(stopEl => {
-        dirStops.push(stopEl.getAttribute('tag') || '');
+        dirStops.push(sanitizeXMLValue(stopEl.getAttribute('tag')));
       });
       
       directions.push({
-        tag: dirEl.getAttribute('tag') || '',
-        title: dirEl.getAttribute('title') || '',
-        name: dirEl.getAttribute('name') || '',
+        tag: sanitizeXMLValue(dirEl.getAttribute('tag')),
+        title: sanitizeXMLValue(dirEl.getAttribute('title')),
+        name: sanitizeXMLValue(dirEl.getAttribute('name')),
         useForUI: dirEl.getAttribute('useForUI') === 'true',
         stops: dirStops,
       });
     });
     
-    // Parse paths
+    // Parse paths with safe numeric parsing
     routeEl.querySelectorAll('path').forEach(pathEl => {
       const points: PathPoint[] = [];
       pathEl.querySelectorAll('point').forEach(pointEl => {
         points.push({
-          lat: parseFloat(pointEl.getAttribute('lat') || '0'),
-          lon: parseFloat(pointEl.getAttribute('lon') || '0'),
+          lat: safeParseFloat(pointEl.getAttribute('lat')),
+          lon: safeParseFloat(pointEl.getAttribute('lon')),
         });
       });
       if (points.length > 0) {
@@ -64,14 +130,14 @@ export async function fetchRouteConfig(): Promise<Route[]> {
     });
     
     routes.push({
-      tag: routeEl.getAttribute('tag') || '',
-      title: routeEl.getAttribute('title') || '',
-      color: routeEl.getAttribute('color') || '000000',
-      oppositeColor: routeEl.getAttribute('oppositeColor') || 'ffffff',
-      latMin: parseFloat(routeEl.getAttribute('latMin') || '0'),
-      latMax: parseFloat(routeEl.getAttribute('latMax') || '0'),
-      lonMin: parseFloat(routeEl.getAttribute('lonMin') || '0'),
-      lonMax: parseFloat(routeEl.getAttribute('lonMax') || '0'),
+      tag: sanitizeXMLValue(routeEl.getAttribute('tag')),
+      title: sanitizeXMLValue(routeEl.getAttribute('title')),
+      color: sanitizeXMLValue(routeEl.getAttribute('color')) || '000000',
+      oppositeColor: sanitizeXMLValue(routeEl.getAttribute('oppositeColor')) || 'ffffff',
+      latMin: safeParseFloat(routeEl.getAttribute('latMin')),
+      latMax: safeParseFloat(routeEl.getAttribute('latMax')),
+      lonMin: safeParseFloat(routeEl.getAttribute('lonMin')),
+      lonMax: safeParseFloat(routeEl.getAttribute('lonMax')),
       stops,
       directions,
       paths,
@@ -93,14 +159,14 @@ export async function fetchVehicleLocations(routeTag?: string): Promise<VehicleL
   
   vehicleElements.forEach(vehicleEl => {
     vehicles.push({
-      id: vehicleEl.getAttribute('id') || '',
-      routeTag: vehicleEl.getAttribute('routeTag') || '',
-      dirTag: vehicleEl.getAttribute('dirTag') || '',
-      lat: parseFloat(vehicleEl.getAttribute('lat') || '0'),
-      lon: parseFloat(vehicleEl.getAttribute('lon') || '0'),
-      heading: parseFloat(vehicleEl.getAttribute('heading') || '0'),
-      speedKmHr: parseFloat(vehicleEl.getAttribute('speedKmHr') || '0'),
-      secsSinceReport: parseInt(vehicleEl.getAttribute('secsSinceReport') || '0', 10),
+      id: sanitizeXMLValue(vehicleEl.getAttribute('id')),
+      routeTag: sanitizeXMLValue(vehicleEl.getAttribute('routeTag')),
+      dirTag: sanitizeXMLValue(vehicleEl.getAttribute('dirTag')),
+      lat: safeParseFloat(vehicleEl.getAttribute('lat')),
+      lon: safeParseFloat(vehicleEl.getAttribute('lon')),
+      heading: safeParseFloat(vehicleEl.getAttribute('heading')),
+      speedKmHr: safeParseFloat(vehicleEl.getAttribute('speedKmHr')),
+      secsSinceReport: safeParseInt(vehicleEl.getAttribute('secsSinceReport')),
     });
   });
   
@@ -125,20 +191,20 @@ export async function fetchPredictions(stopTag: string, routeTag?: string): Prom
       
       dirEl.querySelectorAll('prediction').forEach(pEl => {
         preds.push({
-          epochTime: parseInt(pEl.getAttribute('epochTime') || '0', 10),
-          seconds: parseInt(pEl.getAttribute('seconds') || '0', 10),
-          minutes: parseInt(pEl.getAttribute('minutes') || '0', 10),
+          epochTime: safeParseInt(pEl.getAttribute('epochTime')),
+          seconds: safeParseInt(pEl.getAttribute('seconds')),
+          minutes: safeParseInt(pEl.getAttribute('minutes')),
           isDeparture: pEl.getAttribute('isDeparture') === 'true',
           affectedByLayover: pEl.getAttribute('affectedByLayover') === 'true',
-          dirTag: pEl.getAttribute('dirTag') || '',
-          vehicle: pEl.getAttribute('vehicle') || '',
-          block: pEl.getAttribute('block') || '',
+          dirTag: sanitizeXMLValue(pEl.getAttribute('dirTag')),
+          vehicle: sanitizeXMLValue(pEl.getAttribute('vehicle')),
+          block: sanitizeXMLValue(pEl.getAttribute('block')),
         });
       });
       
       if (preds.length > 0) {
         directions.push({
-          title: dirEl.getAttribute('title') || '',
+          title: sanitizeXMLValue(dirEl.getAttribute('title')),
           predictions: preds,
         });
       }
@@ -146,10 +212,10 @@ export async function fetchPredictions(stopTag: string, routeTag?: string): Prom
     
     if (directions.length > 0) {
       predictions.push({
-        stopTag: predEl.getAttribute('stopTag') || '',
-        stopTitle: predEl.getAttribute('stopTitle') || '',
-        routeTag: predEl.getAttribute('routeTag') || '',
-        routeTitle: predEl.getAttribute('routeTitle') || '',
+        stopTag: sanitizeXMLValue(predEl.getAttribute('stopTag')),
+        stopTitle: sanitizeXMLValue(predEl.getAttribute('stopTitle')),
+        routeTag: sanitizeXMLValue(predEl.getAttribute('routeTag')),
+        routeTitle: sanitizeXMLValue(predEl.getAttribute('routeTitle')),
         directions,
       });
     }

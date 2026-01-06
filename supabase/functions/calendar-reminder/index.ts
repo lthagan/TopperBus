@@ -15,32 +15,33 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     const expectedSecret = Deno.env.get('CALENDAR_REMINDER_SECRET');
     
-    // If a secret is configured, require it for authentication
-    if (expectedSecret) {
-      if (!authHeader) {
-        console.error('Missing Authorization header');
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Accept either "Bearer <secret>" or just the secret directly
-      const providedToken = authHeader.replace('Bearer ', '').trim();
-      
-      if (providedToken !== expectedSecret) {
-        console.error('Invalid authorization token');
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else {
-      // If no secret is configured, check for Supabase service role key
-      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-      if (!authHeader || !authHeader.includes(supabaseAnonKey || '')) {
-        console.warn('CALENDAR_REMINDER_SECRET not configured - using fallback auth check');
-      }
+    // SECURITY: Always require CALENDAR_REMINDER_SECRET for authentication
+    // This function should never be callable by clients with the anon key
+    if (!expectedSecret) {
+      console.error('CALENDAR_REMINDER_SECRET is not configured - rejecting request for security');
+      return new Response(
+        JSON.stringify({ error: 'Service not configured' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!authHeader) {
+      console.error('Missing Authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Accept either "Bearer <secret>" or just the secret directly
+    const providedToken = authHeader.replace('Bearer ', '').trim();
+    
+    if (providedToken !== expectedSecret) {
+      console.error('Invalid authorization token');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const discordWebhookUrl = Deno.env.get('DISCORD_WEBHOOK_URL');

@@ -6,6 +6,40 @@ import { cn } from "@/lib/utils";
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
 
+/**
+ * Validates that a color value is a safe CSS color format.
+ * Accepts hex colors (#fff, #ffffff), rgb(), rgba(), hsl(), hsla(), and CSS color names.
+ * @security This function prevents XSS by rejecting values that could contain malicious CSS/JS.
+ */
+function isValidCSSColor(color: string): boolean {
+  // Match hex colors
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(color)) {
+    return true;
+  }
+  // Match rgb/rgba/hsl/hsla functions with numeric values only
+  if (/^(rgb|rgba|hsl|hsla)\(\s*[\d.,\s%]+\s*\)$/.test(color)) {
+    return true;
+  }
+  // Match CSS color names (letters only, reasonable length)
+  if (/^[a-zA-Z]{1,20}$/.test(color)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Sanitizes a CSS selector/key to prevent injection attacks.
+ * Only allows alphanumeric characters and hyphens.
+ */
+function sanitizeCSSKey(key: string): string {
+  return key.replace(/[^a-zA-Z0-9-_]/g, '');
+}
+
+/**
+ * Configuration for chart components.
+ * @warning SECURITY: Do not use user-provided input directly in ChartConfig.
+ * All color values and keys should be developer-controlled to prevent XSS attacks.
+ */
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
@@ -58,6 +92,10 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+/**
+ * Generates scoped CSS custom properties for chart theming.
+ * @security Colors are validated to prevent CSS injection attacks.
+ */
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
@@ -65,18 +103,27 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
+  // Sanitize the chart ID to prevent selector injection
+  const safeId = sanitizeCSSKey(id);
+
   return (
     <style
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart=${safeId}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    // Validate color before including in CSS
+    if (color && isValidCSSColor(color)) {
+      const safeKey = sanitizeCSSKey(key);
+      return `  --color-${safeKey}: ${color};`;
+    }
+    return null;
   })
+  .filter(Boolean)
   .join("\n")}
 }
 `,
