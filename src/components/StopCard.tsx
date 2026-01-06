@@ -64,6 +64,7 @@ const DRAG_HANDLE_HEIGHT = 36; // drag handle height
 const MAX_HEIGHT = 75; // percentage
 const NO_ARRIVALS_HEIGHT = 100; // height for no arrivals message
 const OUT_OF_SERVICE_HEIGHT = 100; // height for out of service warning
+const COLLAPSED_HEIGHT = 12; // collapsed shows just drag handle + title bar
 
 // Calculate dynamic minimum height based on number of predictions (show up to 3)
 const calculateMinHeight = (predCount: number, hasRouteFilters: boolean, hasOutOfServiceRoutes: boolean): number => {
@@ -190,7 +191,7 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
     }
   }, [sortedPredictions.length, hasRouteFilters, isDragging, minHeight]);
 
-  // Drag handlers - tracks Y position for swipe-to-dismiss with smooth animation
+  // Drag handlers - tracks Y position for swipe-to-minimize/dismiss
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -205,42 +206,47 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
       
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
       const deltaY = clientY - dragStartY.current;
-      
-      // If dragging up (negative deltaY), translate the panel up
-      if (deltaY < 0) {
-        setDragTranslateY(deltaY);
-        return;
-      }
-      
-      // Reset translate if dragging down
-      setDragTranslateY(0);
-      
       const windowHeight = window.innerHeight;
       const deltaPercent = (deltaY / windowHeight) * 100;
       
-      const newHeight = Math.min(MAX_HEIGHT, Math.max(minHeight, dragStartHeight.current + deltaPercent));
-      setPanelHeight(newHeight);
+      // Calculate new height (dragging down = smaller panel = positive deltaY = subtract from height)
+      const newHeight = dragStartHeight.current - deltaPercent;
+      
+      // If trying to drag beyond max, show translate effect for dismiss gesture
+      if (newHeight > MAX_HEIGHT) {
+        const overDrag = newHeight - MAX_HEIGHT;
+        setDragTranslateY(overDrag * 2); // Translate down for dismiss
+        setPanelHeight(MAX_HEIGHT);
+        return;
+      }
+      
+      setDragTranslateY(0);
+      setPanelHeight(Math.max(COLLAPSED_HEIGHT, Math.min(MAX_HEIGHT, newHeight)));
     };
 
     const handleDragEnd = () => {
       if (!isDragging) return;
       setIsDragging(false);
       
-      // If swiped up significantly, close the panel
-      if (dragTranslateY < -50) {
+      // If dragged down significantly past max, dismiss
+      if (dragTranslateY > 50) {
         handleClose();
         return;
       }
       
-      // Reset translate
       setDragTranslateY(0);
       
-      // Snap to nearest point
-      const midPoint = (minHeight + MAX_HEIGHT) / 2;
-      if ((panelHeight || minHeight) > midPoint) {
-        setPanelHeight(MAX_HEIGHT);
-      } else {
+      // Snap to nearest breakpoint: collapsed, min, or max
+      const current = panelHeight || minHeight;
+      const collapseThreshold = (COLLAPSED_HEIGHT + minHeight) / 2;
+      const expandThreshold = (minHeight + MAX_HEIGHT) / 2;
+      
+      if (current < collapseThreshold) {
+        setPanelHeight(COLLAPSED_HEIGHT);
+      } else if (current < expandThreshold) {
         setPanelHeight(minHeight);
+      } else {
+        setPanelHeight(MAX_HEIGHT);
       }
     };
 
@@ -263,6 +269,8 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
     setIsClosing(true);
     setTimeout(onClose, 200);
   };
+
+  const isCollapsed = (panelHeight || minHeight) <= COLLAPSED_HEIGHT + 2;
 
   const getNearestStopForBus = (vehicleId: string, routeTag: string): string | null => {
     const vehicle = vehicles.find(v => v.id === vehicleId && v.routeTag === routeTag);
@@ -342,56 +350,111 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
           transition: isDragging ? 'none' : 'height 0.2s ease-out, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
         }}
       >
-        {/* Header */}
-        <div className="p-4 border-b border-border flex-shrink-0">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="flex -space-x-1">
-                  {routesAtStop.length > 0 ? (
-                    routesAtStop.map(r => (
-                      <span
-                        key={r.tag}
-                        className="w-3 h-3 rounded-full flex-shrink-0 ring-1 ring-card"
-                        style={{ backgroundColor: `#${r.color === '000000' ? '6B7280' : r.color}` }}
-                      />
-                    ))
-                  ) : (
+        {/* Drag handle at top */}
+        <div 
+          className="flex-shrink-0 pt-3 pb-2 flex justify-center cursor-grab active:cursor-grabbing touch-none select-none"
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+        >
+          <div className="w-12 h-1.5 rounded-full bg-muted-foreground/40" />
+        </div>
+
+        {/* Collapsed state - just show title bar */}
+        {isCollapsed ? (
+          <div 
+            className="flex-1 px-4 pb-2 flex items-center justify-between cursor-pointer"
+            onClick={() => setPanelHeight(minHeight)}
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-1">
+                {routesAtStop.length > 0 ? (
+                  routesAtStop.slice(0, 3).map(r => (
                     <span
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: `#${route.color === '000000' ? '6B7280' : route.color}` }}
+                      key={r.tag}
+                      className="w-3 h-3 rounded-full flex-shrink-0 ring-1 ring-card"
+                      style={{ backgroundColor: `#${r.color === '000000' ? '6B7280' : r.color}` }}
                     />
-                  )}
-                </div>
-                <span className="text-xs text-muted-foreground font-medium">
-                  Stop {stop.stopId}
-                </span>
+                  ))
+                ) : (
+                  <span
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: `#${route.color === '000000' ? '6B7280' : route.color}` }}
+                  />
+                )}
               </div>
-              <h3 className="text-lg font-semibold text-foreground truncate">
+              <span className="text-xs text-muted-foreground font-medium">
+                Stop {stop.stopId}
+              </span>
+              <span className="font-medium text-foreground text-sm truncate max-w-[180px]">
                 {stop.shortTitle || stop.title}
-              </h3>
+              </span>
+              {sortedPredictions.length > 0 && (
+                <span className="text-xs text-green-400 font-medium">
+                  {sortedPredictions[0].prediction.minutes === 0 
+                    ? 'NOW' 
+                    : `${sortedPredictions[0].prediction.minutes} min`}
+                </span>
+              )}
             </div>
             <button
-              onClick={handleClose}
+              onClick={(e) => { e.stopPropagation(); handleClose(); }}
               className="p-2 -m-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          
-          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              <span>{stop.lat.toFixed(5)}, {stop.lon.toFixed(5)}</span>
-            </div>
-            <button
-              onClick={fetchAllData}
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              <RefreshCw className={cn("w-3 h-3", loading && "animate-spin")} />
-              <span>Updated {lastUpdate.toLocaleTimeString()}</span>
-            </button>
-          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="px-4 pb-4 border-b border-border flex-shrink-0">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="flex -space-x-1">
+                      {routesAtStop.length > 0 ? (
+                        routesAtStop.map(r => (
+                          <span
+                            key={r.tag}
+                            className="w-3 h-3 rounded-full flex-shrink-0 ring-1 ring-card"
+                            style={{ backgroundColor: `#${r.color === '000000' ? '6B7280' : r.color}` }}
+                          />
+                        ))
+                      ) : (
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: `#${route.color === '000000' ? '6B7280' : route.color}` }}
+                        />
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      Stop {stop.stopId}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground truncate">
+                    {stop.shortTitle || stop.title}
+                  </h3>
+                </div>
+                <button
+                  onClick={handleClose}
+                  className="p-2 -m-2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  <span>{stop.lat.toFixed(5)}, {stop.lon.toFixed(5)}</span>
+                </div>
+                <button
+                  onClick={fetchAllData}
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                >
+                  <RefreshCw className={cn("w-3 h-3", loading && "animate-spin")} />
+                  <span>Updated {lastUpdate.toLocaleTimeString()}</span>
+                </button>
+              </div>
           
           {/* Route filter - only show routes in service */}
           {routesInService.length > 1 && (
@@ -559,15 +622,8 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
             </div>
           )}
         </div>
-        
-        {/* Drag handle - always visible for resizing */}
-        <div 
-          className="flex-shrink-0 py-3 flex justify-center cursor-grab active:cursor-grabbing touch-none select-none"
-          onMouseDown={handleDragStart}
-          onTouchStart={handleDragStart}
-        >
-          <div className="w-12 h-1.5 rounded-full bg-muted-foreground/40" />
-        </div>
+          </>
+        )}
       </div>
     </>
   );
