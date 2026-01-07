@@ -2,4 +2,4 @@
 
 ## Project info
 
-**URL**: https://topperbus.lovable.app/
+**URL**: https://topperbus.com/
