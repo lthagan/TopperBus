@@ -211,10 +211,10 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
       const windowHeight = window.innerHeight;
       const deltaPercent = (deltaY / windowHeight) * 100;
       
-      // Swipe UP (negative deltaY) = shrink panel, swipe DOWN (positive deltaY) = expand panel
-      const newHeight = dragStartHeight.current - deltaPercent;
+      // Drag DOWN (positive deltaY) = expand panel, drag UP (negative deltaY) = shrink panel
+      const newHeight = dragStartHeight.current + deltaPercent;
       
-      // If already collapsed and trying to shrink more (swipe up), prepare for dismiss
+      // If already collapsed and trying to shrink more (drag up), prepare for dismiss
       if (isCollapsed && deltaY < 0) {
         setDragTranslateY(deltaY); // Translate up for dismiss
         return;
@@ -228,26 +228,14 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
       if (!isDragging) return;
       setIsDragging(false);
       
-      // If collapsed and swiped up significantly, dismiss
+      // If collapsed and dragged up significantly, dismiss
       if (isCollapsed && dragTranslateY < -50) {
         handleClose();
         return;
       }
       
       setDragTranslateY(0);
-      
-      // Snap to nearest breakpoint: collapsed, min, or max
-      const current = panelHeight || minHeight;
-      const collapseThreshold = (COLLAPSED_HEIGHT + minHeight) / 2;
-      const expandThreshold = (minHeight + MAX_HEIGHT) / 2;
-      
-      if (current < collapseThreshold) {
-        setPanelHeight(COLLAPSED_HEIGHT);
-      } else if (current < expandThreshold) {
-        setPanelHeight(minHeight);
-      } else {
-        setPanelHeight(MAX_HEIGHT);
-      }
+      // No snapping - card stays where user dragged it
     };
 
     if (isDragging) {
