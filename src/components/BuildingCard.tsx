@@ -48,12 +48,12 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       const windowHeight = window.innerHeight;
       const deltaPercent = (deltaY / windowHeight) * 100;
       
-      // Swipe DOWN (positive deltaY) = shrink panel, swipe UP (negative deltaY) = expand panel
-      const newHeight = dragStartHeight.current + deltaPercent;
+      // Swipe UP (negative deltaY) = shrink panel, swipe DOWN (positive deltaY) = expand panel
+      const newHeight = dragStartHeight.current - deltaPercent;
       
-      // If already collapsed and trying to shrink more (swipe down), prepare for dismiss
-      if (isCollapsed && deltaY > 0) {
-        setDragTranslateY(deltaY); // Translate down for dismiss
+      // If already collapsed and trying to shrink more (swipe up), prepare for dismiss
+      if (isCollapsed && deltaY < 0) {
+        setDragTranslateY(deltaY); // Translate up for dismiss
         return;
       }
       
@@ -65,8 +65,8 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       if (!isDragging) return;
       setIsDragging(false);
       
-      // If collapsed and swiped down significantly, dismiss
-      if (isCollapsed && dragTranslateY > 50) {
+      // If collapsed and swiped up significantly, dismiss
+      if (isCollapsed && dragTranslateY < -50) {
         handleClose();
         return;
       }
@@ -112,8 +112,8 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       <div 
         ref={panelRef}
         className={cn(
-          "fixed bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-2xl shadow-2xl z-[1000] flex flex-col",
-          isClosing ? "translate-y-full" : isOpening ? "translate-y-full" : ""
+          "fixed top-0 left-0 right-0 bg-card border-b border-border rounded-b-2xl shadow-2xl z-[1000] flex flex-col",
+          isClosing ? "-translate-y-full" : isOpening ? "-translate-y-full" : ""
         )}
         style={{ 
           height: `${panelHeight}vh`,
@@ -121,14 +121,6 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
           transition: isDragging ? 'none' : 'height 0.2s ease-out, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
         }}
       >
-        {/* Drag handle at top */}
-        <div 
-          className="flex-shrink-0 pt-3 pb-2 flex justify-center cursor-grab active:cursor-grabbing touch-none select-none"
-          onMouseDown={handleDragStart}
-          onTouchStart={handleDragStart}
-        >
-          <div className="w-12 h-1.5 rounded-full bg-muted-foreground/40" />
-        </div>
 
         {/* Collapsed state - just show title */}
         {isCollapsed ? (
@@ -232,6 +224,15 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
             </div>
           </>
         )}
+        
+        {/* Drag handle at bottom */}
+        <div 
+          className="flex-shrink-0 pt-2 pb-3 flex justify-center cursor-grab active:cursor-grabbing touch-none select-none border-t border-border"
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+        >
+          <div className="w-12 h-1.5 rounded-full bg-muted-foreground/40" />
+        </div>
       </div>
     </>
   );

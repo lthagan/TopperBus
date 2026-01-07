@@ -12,7 +12,7 @@ import RouteLegend from '@/components/RouteLegend';
 import BuildingCard from '@/components/BuildingCard';
 import { CampusBuilding } from '@/lib/campusBuildings';
 import { Bus, ScanLine, List, Map as MapIcon, RefreshCw, Calendar, AlertTriangle, MessageSquare, Locate, X } from 'lucide-react';
-import BuildingSearch from '@/components/BuildingSearch';
+import UnifiedSearch from '@/components/UnifiedSearch';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -272,11 +272,13 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Building search and location */}
+          {/* Unified search and location */}
           <div className="flex items-center gap-2 mb-3">
             <div className="flex-1">
-              <BuildingSearch
+              <UnifiedSearch
+                routes={routes}
                 onBuildingSelect={handleBuildingClick}
+                onStopSelect={handleStopClick}
                 onGetDirections={handleGetDirections}
                 selectedBuilding={selectedBuilding}
                 hasUserLocation={!!userLocation}
