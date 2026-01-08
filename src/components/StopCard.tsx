@@ -191,7 +191,9 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
     }
   }, [sortedPredictions.length, hasRouteFilters, isDragging, minHeight]);
 
-  const isCollapsed = (panelHeight || minHeight) <= COLLAPSED_HEIGHT + 2;
+  const isCollapsedRef = useRef(false);
+  isCollapsedRef.current = (panelHeight || minHeight) <= COLLAPSED_HEIGHT + 2;
+  const isCollapsed = isCollapsedRef.current;
 
   // Drag handlers - tracks Y position for swipe-to-minimize/dismiss
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -214,14 +216,18 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
       // Drag DOWN (positive deltaY) = expand panel, drag UP (negative deltaY) = shrink panel
       const newHeight = dragStartHeight.current + deltaPercent;
       
+      // Check collapsed state based on current calculation, not stale state
+      const currentHeight = Math.max(COLLAPSED_HEIGHT, Math.min(MAX_HEIGHT, newHeight));
+      const wouldBeCollapsed = currentHeight <= COLLAPSED_HEIGHT + 2;
+      
       // If already collapsed and trying to shrink more (drag up), prepare for dismiss
-      if (isCollapsed && deltaY < 0) {
+      if (wouldBeCollapsed && deltaY < 0 && dragStartHeight.current <= COLLAPSED_HEIGHT + 2) {
         setDragTranslateY(deltaY); // Translate up for dismiss
         return;
       }
       
       setDragTranslateY(0);
-      setPanelHeight(Math.max(COLLAPSED_HEIGHT, Math.min(MAX_HEIGHT, newHeight)));
+      setPanelHeight(currentHeight);
     };
 
     const handleDragEnd = () => {
@@ -332,7 +338,8 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
         style={{ 
           height: `${panelHeight || minHeight}vh`,
           transform: isClosing ? undefined : isOpening ? undefined : `translateY(${dragTranslateY}px)`,
-          transition: isDragging ? 'none' : 'height 0.2s ease-out, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
+          transition: isDragging ? 'none' : 'height 0.2s ease-out, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+          paddingTop: 'max(env(safe-area-inset-top), 12px)'
         }}
       >
 

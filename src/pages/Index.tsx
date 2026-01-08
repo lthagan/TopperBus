@@ -11,8 +11,7 @@ import QRScanner from '@/components/QRScanner';
 import RouteLegend from '@/components/RouteLegend';
 import BuildingCard from '@/components/BuildingCard';
 import { CampusBuilding } from '@/lib/campusBuildings';
-import { Bus, ScanLine, List, Map as MapIcon, RefreshCw, Calendar, AlertTriangle, MessageSquare, Locate, X } from 'lucide-react';
-import UnifiedSearch from '@/components/UnifiedSearch';
+import { Bus, ScanLine, List, Map as MapIcon, RefreshCw, Calendar, AlertTriangle, MessageSquare, Locate, X, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -460,26 +459,36 @@ const Index = () => {
           "w-full md:w-80 lg:w-96 border-l border-border bg-card flex flex-col",
           view === 'map' && "hidden md:block"
         )}>
-          {/* Unified search in sidebar */}
+          {/* Search input in sidebar */}
           <div className="p-4 border-b border-border flex-shrink-0">
-            <UnifiedSearch
-              routes={routes}
-              onBuildingSelect={handleBuildingClick}
-              onStopSelect={handleStopClick}
-              onGetDirections={handleGetDirections}
-              selectedBuilding={selectedBuilding}
-              hasUserLocation={!!userLocation}
-              search={stopSearch}
-              onSearchChange={setStopSearch}
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={stopSearch}
+                onChange={(e) => setStopSearch(e.target.value)}
+                placeholder="Search stops & buildings..."
+                className="w-full pl-9 pr-8 py-2.5 bg-secondary/80 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+              />
+              {stopSearch && (
+                <button
+                  onClick={() => setStopSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex-1 overflow-hidden">
             <StopList
               routes={routes}
               selectedRoute={selectedRoute}
               onStopSelect={handleStopClick}
+              onBuildingSelect={handleBuildingClick}
+              onGetDirections={handleGetDirections}
               search={stopSearch}
-              onSearchChange={setStopSearch}
+              hasUserLocation={!!userLocation}
             />
           </div>
         </div>

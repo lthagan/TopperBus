@@ -37,7 +37,9 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
     setDragTranslateY(0);
   };
 
-  const isCollapsed = panelHeight <= collapsedHeight + 2;
+  const isCollapsedRef = useRef(false);
+  isCollapsedRef.current = panelHeight <= collapsedHeight + 2;
+  const isCollapsed = isCollapsedRef.current;
 
   useEffect(() => {
     const handleDragMove = (e: MouseEvent | TouchEvent) => {
@@ -51,14 +53,18 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       // Drag DOWN (positive deltaY) = expand panel, drag UP (negative deltaY) = shrink panel
       const newHeight = dragStartHeight.current + deltaPercent;
       
+      // Check collapsed state based on current calculation, not stale state
+      const currentHeight = Math.max(collapsedHeight, Math.min(maxHeight, newHeight));
+      const wouldBeCollapsed = currentHeight <= collapsedHeight + 2;
+      
       // If already collapsed and trying to shrink more (drag up), prepare for dismiss
-      if (isCollapsed && deltaY < 0) {
+      if (wouldBeCollapsed && deltaY < 0 && dragStartHeight.current <= collapsedHeight + 2) {
         setDragTranslateY(deltaY); // Translate up for dismiss
         return;
       }
       
       setDragTranslateY(0);
-      setPanelHeight(Math.max(collapsedHeight, Math.min(maxHeight, newHeight)));
+      setPanelHeight(currentHeight);
     };
 
     const handleDragEnd = () => {
@@ -100,13 +106,14 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       <div 
         ref={panelRef}
         className={cn(
-          "fixed top-0 left-0 right-0 bg-card border-b border-border rounded-b-2xl shadow-2xl z-[1000] flex flex-col",
+          "fixed top-0 left-0 right-0 bg-card border-b border-border rounded-b-2xl shadow-2xl z-[1000] flex flex-col pt-[env(safe-area-inset-top)]",
           isClosing ? "-translate-y-full" : isOpening ? "-translate-y-full" : ""
         )}
         style={{ 
           height: `${panelHeight}vh`,
           transform: isClosing ? undefined : isOpening ? undefined : `translateY(${dragTranslateY}px)`,
-          transition: isDragging ? 'none' : 'height 0.2s ease-out, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
+          transition: isDragging ? 'none' : 'height 0.2s ease-out, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+          paddingTop: 'max(env(safe-area-inset-top), 12px)'
         }}
       >
 
