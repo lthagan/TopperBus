@@ -272,18 +272,8 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Unified search and location */}
+          {/* Location button */}
           <div className="flex items-center gap-2 mb-3">
-            <div className="flex-1">
-              <UnifiedSearch
-                routes={routes}
-                onBuildingSelect={handleBuildingClick}
-                onStopSelect={handleStopClick}
-                onGetDirections={handleGetDirections}
-                selectedBuilding={selectedBuilding}
-                hasUserLocation={!!userLocation}
-              />
-            </div>
             <button
               onClick={handleGetLocation}
               disabled={isLocating}
@@ -467,16 +457,31 @@ const Index = () => {
 
         {/* Stop list sidebar */}
         <div className={cn(
-          "w-full md:w-80 lg:w-96 border-l border-border bg-card",
+          "w-full md:w-80 lg:w-96 border-l border-border bg-card flex flex-col",
           view === 'map' && "hidden md:block"
         )}>
-          <StopList
-            routes={routes}
-            selectedRoute={selectedRoute}
-            onStopSelect={handleStopClick}
-            search={stopSearch}
-            onSearchChange={setStopSearch}
-          />
+          {/* Unified search in sidebar */}
+          <div className="p-4 border-b border-border flex-shrink-0">
+            <UnifiedSearch
+              routes={routes}
+              onBuildingSelect={handleBuildingClick}
+              onStopSelect={handleStopClick}
+              onGetDirections={handleGetDirections}
+              selectedBuilding={selectedBuilding}
+              hasUserLocation={!!userLocation}
+              search={stopSearch}
+              onSearchChange={setStopSearch}
+            />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <StopList
+              routes={routes}
+              selectedRoute={selectedRoute}
+              onStopSelect={handleStopClick}
+              search={stopSearch}
+              onSearchChange={setStopSearch}
+            />
+          </div>
         </div>
       </div>
 

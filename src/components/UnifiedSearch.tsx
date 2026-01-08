@@ -11,6 +11,8 @@ interface UnifiedSearchProps {
   onGetDirections?: (building: CampusBuilding) => void;
   selectedBuilding: CampusBuilding | null;
   hasUserLocation?: boolean;
+  search?: string;
+  onSearchChange?: (search: string) => void;
 }
 
 const UnifiedSearch = ({ 
@@ -19,11 +21,23 @@ const UnifiedSearch = ({
   onStopSelect, 
   onGetDirections, 
   selectedBuilding, 
-  hasUserLocation 
+  hasUserLocation,
+  search: externalSearch,
+  onSearchChange: externalOnSearchChange
 }: UnifiedSearchProps) => {
-  const [search, setSearch] = useState('');
+  const [internalSearch, setInternalSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Use external search if provided, otherwise use internal state
+  const search = externalSearch !== undefined ? externalSearch : internalSearch;
+  const setSearch = (value: string) => {
+    if (externalOnSearchChange) {
+      externalOnSearchChange(value);
+    } else {
+      setInternalSearch(value);
+    }
+  };
 
   // Get unique stops across all routes
   const allStops = useMemo(() => {
