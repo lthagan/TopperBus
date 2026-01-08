@@ -1,7 +1,6 @@
 import { Route, Stop } from '@/types/transit';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { useMemo } from 'react';
-import { cn } from '@/lib/utils';
 
 interface StopListProps {
   routes: Route[];
@@ -45,20 +44,6 @@ const StopList = ({ routes, selectedRoute, onStopSelect, search, onSearchChange 
 
   return (
     <div className="h-full flex flex-col">
-      {/* Search */}
-      <div className="p-4 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search stops..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-secondary text-foreground rounded-lg border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-      </div>
-
       {/* Stop list */}
       <div className="flex-1 overflow-y-auto">
         {filteredStops.length === 0 ? (
