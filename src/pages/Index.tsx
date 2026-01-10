@@ -216,7 +216,7 @@ const Index = () => {
           <div className="relative">
             <Bus className="w-12 h-12 text-primary animate-pulse" />
           </div>
-          <p className="text-muted-foreground">Loading WKU Transit...</p>
+          <p className="text-muted-foreground">Loading TopperBus...</p>
         </div>
       </div>
     );
@@ -233,7 +233,7 @@ const Index = () => {
                 <Bus className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-foreground">WKU Transit</h1>
+                <h1 className="text-lg font-semibold text-foreground">TopperBus</h1>
                 <p className="text-xs text-muted-foreground">
                   Live tracking
                 </p>
@@ -242,31 +242,29 @@ const Index = () => {
             
             <div className="flex items-center gap-2">
               <Link
-                to="/feedback"
-                className="p-2.5 rounded-xl bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
-                title="Feedback"
-              >
-                <MessageSquare className="w-5 h-5" />
-              </Link>
-              <Link
                 to="/schedule"
-                className="p-2.5 rounded-xl bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors text-sm"
                 title="Schedule"
               >
-                <Calendar className="w-5 h-5" />
+                <Calendar className="w-4 h-4" />
+                <span className="hidden sm:inline">Schedule</span>
               </Link>
               <button
                 onClick={handleRefresh}
-                className="p-2.5 rounded-xl bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors text-sm"
                 disabled={isRefreshing}
+                title="Refresh data"
               >
-                <RefreshCw className={cn("w-5 h-5", isRefreshing && "animate-spin")} />
+                <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+                <span className="hidden sm:inline">Refresh</span>
               </button>
               <button
                 onClick={() => setShowScanner(true)}
-                className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm"
+                title="Scan QR Code"
               >
-                <ScanLine className="w-5 h-5" />
+                <ScanLine className="w-4 h-4" />
+                <span className="hidden sm:inline">Scan</span>
               </button>
             </div>
           </div>
@@ -277,7 +275,7 @@ const Index = () => {
               onClick={handleGetLocation}
               disabled={isLocating}
               className={cn(
-                "p-2.5 rounded-xl transition-colors flex-shrink-0",
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl transition-colors text-sm",
                 userLocation 
                   ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30" 
                   : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80",
@@ -285,15 +283,17 @@ const Index = () => {
               )}
               title={userLocation ? "Location enabled" : "Get my location"}
             >
-              <Locate className="w-5 h-5" />
+              <Locate className="w-4 h-4" />
+              <span className="hidden sm:inline">{userLocation ? "Located" : "My Location"}</span>
             </button>
             {directionsDestination && (
               <button
                 onClick={() => setDirectionsDestination(null)}
-                className="p-2.5 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors flex-shrink-0"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors text-sm"
                 title="Clear directions"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
+                <span className="hidden sm:inline">Clear Route</span>
               </button>
             )}
           </div>
@@ -530,6 +530,40 @@ const Index = () => {
           routes={routes}
         />
       )}
+
+      {/* Footer */}
+      <footer className="flex-shrink-0 border-t border-border bg-card/90 backdrop-blur-md">
+        <div className="px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <Link
+                to="/feedback"
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Feedback</span>
+              </Link>
+              <Link
+                to="/schedule"
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Schedule</span>
+              </Link>
+              <Link
+                to="/qr-codes"
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ScanLine className="w-4 h-4" />
+                <span>QR Codes</span>
+              </Link>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} TopperBus
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 };
