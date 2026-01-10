@@ -1,14 +1,32 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { CampusBuilding, CATEGORY_ICONS } from '@/lib/campusBuildings';
-import { X, MapPin, GraduationCap, History } from 'lucide-react';
+import { Route, Stop } from '@/types/transit';
+import { X, MapPin, GraduationCap, History, Bus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BuildingCardProps {
   building: CampusBuilding;
   onClose: () => void;
+  routes?: Route[];
+  onStopSelect?: (stop: Stop, route: Route) => void;
 }
 
-const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
+// Calculate distance between two points in meters
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+};
+
+const BuildingCard = ({ building, onClose, routes = [], onStopSelect }: BuildingCardProps) => {
   const [isClosing, setIsClosing] = useState(false);
   const [isOpening, setIsOpening] = useState(true);
   const [panelHeight, setPanelHeight] = useState(55);
@@ -19,10 +37,37 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
   const dragStartY = useRef(0);
   const dragStartHeight = useRef(0);
 
-  // Heights in vh - collapsed shows just drag handle + title
-  const collapsedHeight = 12; // Minimal header with drag handle
+  const collapsedHeight = 12;
   const minHeight = 55;
   const maxHeight = 80;
+
+  // Calculate closest stops
+  const closestStops = useMemo(() => {
+    if (!routes.length) return [];
+    
+    const stopsWithDistance: { stop: Stop; route: Route; distance: number }[] = [];
+    const seenLocations = new Set<string>();
+    
+    routes.forEach(route => {
+      route.stops.forEach(stop => {
+        const locationKey = `${stop.lat.toFixed(4)},${stop.lon.toFixed(4)}`;
+        if (seenLocations.has(locationKey)) return;
+        seenLocations.add(locationKey);
+        
+        const distance = calculateDistance(
+          building.lat,
+          building.lon,
+          stop.lat,
+          stop.lon
+        );
+        stopsWithDistance.push({ stop, route, distance });
+      });
+    });
+    
+    return stopsWithDistance
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 3);
+  }, [building, routes]);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsOpening(false), 50);
@@ -50,16 +95,12 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       const windowHeight = window.innerHeight;
       const deltaPercent = (deltaY / windowHeight) * 100;
       
-      // Drag DOWN (positive deltaY) = expand panel, drag UP (negative deltaY) = shrink panel
       const newHeight = dragStartHeight.current + deltaPercent;
-      
-      // Check collapsed state based on current calculation, not stale state
       const currentHeight = Math.max(collapsedHeight, Math.min(maxHeight, newHeight));
       const wouldBeCollapsed = currentHeight <= collapsedHeight + 2;
       
-      // If already collapsed and trying to shrink more (drag up), prepare for dismiss
       if (wouldBeCollapsed && deltaY < 0 && dragStartHeight.current <= collapsedHeight + 2) {
-        setDragTranslateY(deltaY); // Translate up for dismiss
+        setDragTranslateY(deltaY);
         return;
       }
       
@@ -71,14 +112,12 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
       if (!isDragging) return;
       setIsDragging(false);
       
-      // If collapsed and dragged up significantly, dismiss
       if (isCollapsed && dragTranslateY < -50) {
         handleClose();
         return;
       }
       
       setDragTranslateY(0);
-      // No snapping - card stays where user dragged it
     };
 
     if (isDragging) {
@@ -99,6 +138,13 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(onClose, 200);
+  };
+
+  const formatDistance = (meters: number): string => {
+    if (meters < 1000) {
+      return `${Math.round(meters)}m`;
+    }
+    return `${(meters / 1000).toFixed(1)}km`;
   };
 
   return (
@@ -185,13 +231,69 @@ const BuildingCard = ({ building, onClose }: BuildingCardProps) => {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4">
+              {/* Closest Stops Section */}
+              {closestStops.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Bus className="w-4 h-4 text-primary" />
+                    <h4 className="text-sm font-medium text-foreground">Nearest Bus Stops</h4>
+                  </div>
+                  <div className="space-y-2">
+                    {closestStops.map(({ stop, route, distance }) => {
+                      const color = route.color === '000000' ? '6B7280' : route.color;
+                      return (
+                        <button
+                          key={`${stop.lat.toFixed(4)},${stop.lon.toFixed(4)}`}
+                          onClick={() => onStopSelect?.(stop, route)}
+                          className="w-full p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors text-left"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center">
+                                <MapPin className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm text-foreground">
+                                  {stop.shortTitle || stop.title}
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
+                                    style={{ 
+                                      backgroundColor: `#${color}20`,
+                                      color: `#${color}`,
+                                    }}
+                                  >
+                                    <span 
+                                      className="w-1.5 h-1.5 rounded-full"
+                                      style={{ backgroundColor: `#${color}` }}
+                                    />
+                                    {route.title.replace('Route ', '').split(' ')[0]}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-medium text-primary">
+                                {formatDistance(distance)}
+                              </span>
+                              <p className="text-xs text-muted-foreground">away</p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Building Image Placeholder */}
-              <div className="w-full h-40 rounded-xl bg-secondary mb-4 flex items-center justify-center overflow-hidden">
+              <div className="w-full h-32 rounded-xl bg-secondary mb-4 flex items-center justify-center overflow-hidden">
                 <div className="text-center text-muted-foreground">
-                  <svg width="48" height="48" viewBox="0 0 16 16" className="mx-auto mb-2 opacity-50 fill-current">
+                  <svg width="40" height="40" viewBox="0 0 16 16" className="mx-auto mb-2 opacity-50 fill-current">
                     <path d={CATEGORY_ICONS[building.categories[0]].path} />
                   </svg>
-                  <p className="text-sm">Building Image</p>
+                  <p className="text-xs">Building Image</p>
                 </div>
               </div>
               
