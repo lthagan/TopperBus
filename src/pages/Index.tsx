@@ -456,8 +456,8 @@ const Index = () => {
 
         {/* Stop list sidebar */}
         <div className={cn(
-          "w-full md:w-80 lg:w-96 border-l border-border bg-card flex flex-col",
-          view === 'map' && "hidden md:block"
+          "w-full md:w-80 lg:w-96 border-l border-border bg-card flex-col",
+          view === 'map' ? "hidden md:flex" : "flex"
         )}>
           {/* Search input in sidebar */}
           <div className="p-4 border-b border-border flex-shrink-0">
@@ -519,6 +519,8 @@ const Index = () => {
         <BuildingCard
           building={selectedBuilding}
           onClose={handleCloseBuilding}
+          routes={routes}
+          onStopSelect={handleStopClick}
         />
       )}
 
