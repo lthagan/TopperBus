@@ -56,15 +56,17 @@ const StopList = ({
   }, [routes, selectedRoute, search]);
 
   const filteredBuildings = useMemo(() => {
-    if (!search.trim()) return [];
-    const searchLower = search.toLowerCase();
-    return CAMPUS_BUILDINGS.filter(
-      b =>
-        b.name.toLowerCase().includes(searchLower) ||
-        b.abbreviation.toLowerCase().includes(searchLower) ||
-        b.department.toLowerCase().includes(searchLower) ||
-        b.categories.some(c => c.toLowerCase().includes(searchLower))
-    ).slice(0, 10);
+    const searchLower = search.toLowerCase().trim();
+    const buildings = searchLower
+      ? CAMPUS_BUILDINGS.filter(
+          b =>
+            b.name.toLowerCase().includes(searchLower) ||
+            b.abbreviation.toLowerCase().includes(searchLower) ||
+            b.department.toLowerCase().includes(searchLower) ||
+            b.categories.some(c => c.toLowerCase().includes(searchLower))
+        )
+      : CAMPUS_BUILDINGS;
+    return buildings.slice(0, 20);
   }, [search]);
 
   const handleDirections = (e: React.MouseEvent, building: CampusBuilding) => {
@@ -74,7 +76,7 @@ const StopList = ({
     }
   };
 
-  const showBuildings = search.trim() && filteredBuildings.length > 0;
+  const showBuildings = filteredBuildings.length > 0;
   const hasResults = filteredStops.length > 0 || showBuildings;
 
   return (
@@ -86,13 +88,13 @@ const StopList = ({
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {/* Buildings Section - only when searching */}
+          {/* Buildings Section */}
           {showBuildings && (
             <>
               <div className="px-4 py-2 bg-secondary/50 sticky top-0 z-10">
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   <MapPin className="w-3.5 h-3.5" />
-                  Buildings ({filteredBuildings.length})
+                  Points of Interest ({filteredBuildings.length})
                 </div>
               </div>
               {filteredBuildings.map((building) => {
@@ -157,14 +159,12 @@ const StopList = ({
           {/* Stops Section */}
           {filteredStops.length > 0 && (
             <>
-              {showBuildings && (
-                <div className="px-4 py-2 bg-secondary/50 sticky top-0 z-10">
-                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    <Bus className="w-3.5 h-3.5" />
-                    Stops ({filteredStops.length})
-                  </div>
+              <div className="px-4 py-2 bg-secondary/50 sticky top-0 z-10">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <Bus className="w-3.5 h-3.5" />
+                  Bus Stops ({filteredStops.length})
                 </div>
-              )}
+              </div>
               {filteredStops.map(({ stop, routes: stopRoutes }) => (
                 <button
                   key={`${stop.lat.toFixed(4)},${stop.lon.toFixed(4)}`}
