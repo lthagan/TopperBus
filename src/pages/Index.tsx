@@ -480,7 +480,7 @@ const Index = () => {
               )}
             </div>
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             <StopList
               routes={routes}
               selectedRoute={selectedRoute}
@@ -549,13 +549,6 @@ const Index = () => {
               >
                 <Calendar className="w-4 h-4" />
                 <span>Schedule</span>
-              </Link>
-              <Link
-                to="/qr-codes"
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ScanLine className="w-4 h-4" />
-                <span>QR Codes</span>
               </Link>
             </div>
             <div className="text-xs text-muted-foreground">
