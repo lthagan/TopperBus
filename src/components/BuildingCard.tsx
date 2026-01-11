@@ -95,10 +95,14 @@ const BuildingCard = ({ building, onClose, routes = [], onStopSelect }: Building
       const windowHeight = window.innerHeight;
       const deltaPercent = (deltaY / windowHeight) * 100;
       
+      // Drag DOWN (positive deltaY) = expand panel, drag UP (negative deltaY) = shrink panel
       const newHeight = dragStartHeight.current + deltaPercent;
+      
+      // Check collapsed state based on current calculation
       const currentHeight = Math.max(collapsedHeight, Math.min(maxHeight, newHeight));
       const wouldBeCollapsed = currentHeight <= collapsedHeight + 2;
       
+      // If already collapsed and trying to shrink more (drag up), prepare for dismiss
       if (wouldBeCollapsed && deltaY < 0 && dragStartHeight.current <= collapsedHeight + 2) {
         setDragTranslateY(deltaY);
         return;
@@ -118,6 +122,7 @@ const BuildingCard = ({ building, onClose, routes = [], onStopSelect }: Building
       }
       
       setDragTranslateY(0);
+      // No snapping - card stays where user dragged it
     };
 
     if (isDragging) {
@@ -231,55 +236,32 @@ const BuildingCard = ({ building, onClose, routes = [], onStopSelect }: Building
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4">
-              {/* Closest Stops Section */}
+            {/* Closest Stops Section - Compact */}
               {closestStops.length > 0 && (
                 <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-2">
                     <Bus className="w-4 h-4 text-primary" />
-                    <h4 className="text-sm font-medium text-foreground">Nearest Bus Stops</h4>
+                    <h4 className="text-sm font-medium text-foreground">Nearest Stops</h4>
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
                     {closestStops.map(({ stop, route, distance }) => {
                       const color = route.color === '000000' ? '6B7280' : route.color;
                       return (
                         <button
                           key={`${stop.lat.toFixed(4)},${stop.lon.toFixed(4)}`}
                           onClick={() => onStopSelect?.(stop, route)}
-                          className="w-full p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors text-left"
+                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors text-left"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center">
-                                <MapPin className="w-4 h-4 text-muted-foreground" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-sm text-foreground">
-                                  {stop.shortTitle || stop.title}
-                                </p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
-                                    style={{ 
-                                      backgroundColor: `#${color}20`,
-                                      color: `#${color}`,
-                                    }}
-                                  >
-                                    <span 
-                                      className="w-1.5 h-1.5 rounded-full"
-                                      style={{ backgroundColor: `#${color}` }}
-                                    />
-                                    {route.title.replace('Route ', '').split(' ')[0]}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-sm font-medium text-primary">
-                                {formatDistance(distance)}
-                              </span>
-                              <p className="text-xs text-muted-foreground">away</p>
-                            </div>
-                          </div>
+                          <span 
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: `#${color}` }}
+                          />
+                          <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
+                            {stop.shortTitle || stop.title}
+                          </span>
+                          <span className="text-xs text-primary font-medium">
+                            {formatDistance(distance)}
+                          </span>
                         </button>
                       );
                     })}
