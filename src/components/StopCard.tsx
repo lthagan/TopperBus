@@ -94,6 +94,7 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
   const [isClosing, setIsClosing] = useState(false);
   const [isOpening, setIsOpening] = useState(true);
   const [dragTranslateY, setDragTranslateY] = useState(0);
+  const [hasUserAdjustedHeight, setHasUserAdjustedHeight] = useState(false);
   
   const panelRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef(0);
@@ -188,12 +189,12 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
   const hasOutOfServiceRoutes = routesOutOfService.length > 0;
   const minHeight = calculateMinHeight(sortedPredictions.length, hasRouteFilters, hasOutOfServiceRoutes);
 
-  // Update panel height when predictions change
+  // Update panel height when predictions change - only if user hasn't manually adjusted
   useEffect(() => {
-    if (!isDragging) {
+    if (!isDragging && !hasUserAdjustedHeight) {
       setPanelHeight(minHeight);
     }
-  }, [sortedPredictions.length, hasRouteFilters, isDragging, minHeight]);
+  }, [sortedPredictions.length, hasRouteFilters, isDragging, minHeight, hasUserAdjustedHeight]);
 
   const isCollapsedRef = useRef(false);
   isCollapsedRef.current = (panelHeight || minHeight) <= COLLAPSED_HEIGHT + 2;
@@ -264,6 +265,7 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
       }
       
       setDragTranslateY(0);
+      setHasUserAdjustedHeight(true);
       // No snapping - card stays where user dragged it
     };
 
