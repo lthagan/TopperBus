@@ -98,6 +98,10 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef(0);
   const dragStartHeight = useRef(0);
+  const lastDragY = useRef(0);
+  const lastDragTime = useRef(0);
+  const velocityY = useRef(0);
+  const VELOCITY_THRESHOLD = 0.8; // pixels per ms - fast swipe threshold
 
   // Trigger opening animation
   useEffect(() => {
@@ -201,6 +205,9 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     dragStartY.current = clientY;
     dragStartHeight.current = panelHeight || minHeight;
+    lastDragY.current = clientY;
+    lastDragTime.current = Date.now();
+    velocityY.current = 0;
     setDragTranslateY(0);
   };
 
@@ -209,6 +216,16 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
       if (!isDragging) return;
       
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const now = Date.now();
+      const timeDelta = now - lastDragTime.current;
+      
+      // Calculate velocity (negative = swiping up)
+      if (timeDelta > 0) {
+        velocityY.current = (clientY - lastDragY.current) / timeDelta;
+      }
+      lastDragY.current = clientY;
+      lastDragTime.current = now;
+      
       const deltaY = clientY - dragStartY.current;
       const windowHeight = window.innerHeight;
       const deltaPercent = (deltaY / windowHeight) * 100;
@@ -233,6 +250,12 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
     const handleDragEnd = () => {
       if (!isDragging) return;
       setIsDragging(false);
+      
+      // Fast swipe up (negative velocity) = close card
+      if (velocityY.current < -VELOCITY_THRESHOLD) {
+        handleClose();
+        return;
+      }
       
       // If collapsed and dragged up significantly, dismiss
       if (isCollapsed && dragTranslateY < -50) {
