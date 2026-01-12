@@ -41,30 +41,36 @@ const BuildingCard = ({ building, onClose, routes = [], onStopSelect }: Building
   const minHeight = 55;
   const maxHeight = 80;
 
-  // Calculate closest stops
+  // Calculate closest stops with all routes that serve them
   const closestStops = useMemo(() => {
     if (!routes.length) return [];
     
-    const stopsWithDistance: { stop: Stop; route: Route; distance: number }[] = [];
-    const seenLocations = new Set<string>();
+    // First, collect all stops with their location key
+    const stopsByLocation = new Map<string, { stop: Stop; routes: Route[]; distance: number }>();
     
     routes.forEach(route => {
       route.stops.forEach(stop => {
         const locationKey = `${stop.lat.toFixed(4)},${stop.lon.toFixed(4)}`;
-        if (seenLocations.has(locationKey)) return;
-        seenLocations.add(locationKey);
         
-        const distance = calculateDistance(
-          building.lat,
-          building.lon,
-          stop.lat,
-          stop.lon
-        );
-        stopsWithDistance.push({ stop, route, distance });
+        if (stopsByLocation.has(locationKey)) {
+          // Add this route to existing stop entry
+          const existing = stopsByLocation.get(locationKey)!;
+          if (!existing.routes.find(r => r.tag === route.tag)) {
+            existing.routes.push(route);
+          }
+        } else {
+          const distance = calculateDistance(
+            building.lat,
+            building.lon,
+            stop.lat,
+            stop.lon
+          );
+          stopsByLocation.set(locationKey, { stop, routes: [route], distance });
+        }
       });
     });
     
-    return stopsWithDistance
+    return Array.from(stopsByLocation.values())
       .sort((a, b) => a.distance - b.distance)
       .slice(0, 3);
   }, [building, routes]);
@@ -244,27 +250,32 @@ const BuildingCard = ({ building, onClose, routes = [], onStopSelect }: Building
                     <h4 className="text-sm font-medium text-foreground">Nearest Stops</h4>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {closestStops.map(({ stop, route, distance }) => {
-                      const color = route.color === '000000' ? '6B7280' : route.color;
-                      return (
-                        <button
-                          key={`${stop.lat.toFixed(4)},${stop.lon.toFixed(4)}`}
-                          onClick={() => onStopSelect?.(stop, route)}
-                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors text-left"
-                        >
-                          <span 
-                            className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: `#${color}` }}
-                          />
-                          <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
-                            {stop.shortTitle || stop.title}
-                          </span>
-                          <span className="text-xs text-primary font-medium">
-                            {formatDistance(distance)}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {closestStops.map(({ stop, routes: stopRoutes, distance }) => (
+                      <button
+                        key={`${stop.lat.toFixed(4)},${stop.lon.toFixed(4)}`}
+                        onClick={() => onStopSelect?.(stop, stopRoutes[0])}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors text-left"
+                      >
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          {stopRoutes.map(route => {
+                            const color = route.color === '000000' ? '6B7280' : route.color;
+                            return (
+                              <span 
+                                key={route.tag}
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: `#${color}` }}
+                              />
+                            );
+                          })}
+                        </div>
+                        <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
+                          {stop.shortTitle || stop.title}
+                        </span>
+                        <span className="text-xs text-primary font-medium">
+                          {formatDistance(distance)}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
