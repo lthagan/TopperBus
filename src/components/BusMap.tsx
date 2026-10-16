@@ -81,7 +81,10 @@ const BusMap = forwardRef<BusMapHandle, BusMapProps>(({
     L.tileLayer(tileUrl, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: 'abcd',
-      maxZoom: 20
+      maxZoom: 20,
+      // CARTO only serves raster tiles up to z18; past that, scale the z18 tiles up
+      // instead of requesting tiles that come back blank
+      maxNativeZoom: 18,
     }).addTo(mapRef.current);
 
     // Add zoom control to bottom right
