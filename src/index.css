@@ -107,6 +107,21 @@
   color: hsl(0 0% 60%) !important;
 }
 
+/* Pinch-to-zoom on phones; zoom buttons only on larger screens */
+@media (max-width: 767px) {
+  .leaflet-control-zoom {
+    display: none;
+  }
+}
+
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Building tooltip */
 .building-tooltip {
   background: hsl(0 0% 10%) !important;

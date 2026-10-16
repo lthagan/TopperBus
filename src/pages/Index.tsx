@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Route, VehicleLocation, Stop } from '@/types/transit';
 import { fetchRouteConfig, fetchVehicleLocations } from '@/lib/api';
@@ -8,14 +8,19 @@ import RouteSelector from '@/components/RouteSelector';
 import StopCard from '@/components/StopCard';
 import StopList from '@/components/StopList';
 import QRScanner from '@/components/QRScanner';
-import RouteLegend from '@/components/RouteLegend';
 import BuildingCard from '@/components/BuildingCard';
+import ServiceNotice from '@/components/ServiceNotice';
 import { CampusBuilding } from '@/lib/campusBuildings';
-import { Bus, ScanLine, List, Map as MapIcon, RefreshCw, Calendar, AlertTriangle, MessageSquare, Locate, X, Search } from 'lucide-react';
+import { Bus, ScanLine, Calendar, MessageSquare, Locate, X, Search, Menu, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { getCurrentBreakPeriod, formatBreakDates } from '@/lib/academicCalendar';
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -29,9 +34,9 @@ const Index = () => {
   const [selectedBuilding, setSelectedBuilding] = useState<CampusBuilding | null>(null);
   const [loading, setLoading] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
-  const [view, setView] = useState<'map' | 'list'>('map');
+  const [listOpen, setListOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [stopSearch, setStopSearch] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [directionsDestination, setDirectionsDestination] = useState<CampusBuilding | null>(null);
@@ -95,7 +100,13 @@ const Index = () => {
     toast.error('Stop not found');
   };
 
-  const openStop = useCallback((stop: Stop, route: Route, shouldSwitchToMap: boolean = false) => {
+  const closeList = useCallback(() => {
+    setListOpen(false);
+    setStopSearch('');
+    searchInputRef.current?.blur();
+  }, []);
+
+  const openStop = useCallback((stop: Stop, route: Route) => {
     setSelectedStop(stop);
     setSelectedStopRoute(route);
     // Close other cards
@@ -103,22 +114,12 @@ const Index = () => {
     setSelectedVehicle(null);
     setSelectedVehicleRoute(null);
     setSearchParams({ stop: stop.stopId });
-    if (shouldSwitchToMap) {
-      setView('map');
-    }
   }, [setSearchParams]);
 
   const handleStopClick = useCallback((stop: Stop, route: Route) => {
-    // Capture current view state immediately
-    const shouldSwitchToMap = view === 'list';
-    
-    // Switch to map immediately if needed
-    if (shouldSwitchToMap) {
-      setView('map');
-    }
-    
-    openStop(stop, route, false);
-  }, [view, openStop]);
+    closeList();
+    openStop(stop, route);
+  }, [closeList, openStop]);
 
   const handleCloseStop = useCallback(() => {
     setSelectedStop(null);
@@ -140,13 +141,14 @@ const Index = () => {
   }, []);
 
   const handleBuildingClick = useCallback((building: CampusBuilding) => {
+    closeList();
     setSelectedBuilding(building);
     // Close other cards
     setSelectedStop(null);
     setSelectedStopRoute(null);
     setSelectedVehicle(null);
     setSelectedVehicleRoute(null);
-  }, []);
+  }, [closeList]);
 
   const handleCloseBuilding = useCallback(() => {
     setSelectedBuilding(null);
@@ -155,23 +157,6 @@ const Index = () => {
   const handleQRScan = (stopId: string) => {
     setShowScanner(false);
     selectStopById(stopId);
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      const [routeData, vehicleData] = await Promise.all([
-        fetchRouteConfig(),
-        fetchVehicleLocations(),
-      ]);
-      setRoutes(routeData);
-      setVehicles(vehicleData);
-      toast.success('Data refreshed');
-    } catch (error) {
-      toast.error('Failed to refresh');
-    } finally {
-      setIsRefreshing(false);
-    }
   };
 
   const handleGetLocation = useCallback(() => {
@@ -205,9 +190,9 @@ const Index = () => {
     }
     setDirectionsDestination(building);
     setSelectedBuilding(building);
-    setView('map');
+    closeList();
     toast.success(`Getting directions to ${building.name}`);
-  }, [userLocation]);
+  }, [userLocation, closeList]);
 
   if (loading) {
     return (
@@ -222,265 +207,97 @@ const Index = () => {
     );
   }
 
+  const fabClass = "w-11 h-11 flex items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-colors";
+
   return (
-    <main className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-md z-10">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Bus className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">TopperBus</h1>
-                <p className="text-xs text-muted-foreground">
-                  Live tracking
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Link
-                to="/schedule"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors text-sm"
-                title="Schedule"
-              >
-                <Calendar className="w-4 h-4" />
-                <span className="hidden sm:inline">Schedule</span>
-              </Link>
+    <main className="relative h-[100dvh] overflow-hidden bg-background">
+      {/* Full-screen map (isolate keeps Leaflet's z-indexes below the overlays) */}
+      <div className="absolute inset-0 isolate">
+        <BusMap
+          routes={routes}
+          vehicles={vehicles}
+          selectedRoute={selectedRoute}
+          selectedStop={selectedStop}
+          selectedVehicle={selectedVehicle}
+          selectedBuilding={selectedBuilding}
+          onStopClick={handleStopClick}
+          onVehicleClick={handleVehicleClick}
+          onBuildingClick={handleBuildingClick}
+          userLocation={userLocation}
+          directionsDestination={directionsDestination}
+          onClearDirections={() => setDirectionsDestination(null)}
+        />
+      </div>
+
+      {/* Top overlay: search, route filter, service notice; expands into the stop list */}
+      <div
+        className={cn(
+          "absolute top-0 left-0 right-0 md:right-auto md:w-[26rem] z-20 flex flex-col gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pointer-events-none",
+          listOpen && "bottom-0 bg-background pointer-events-auto md:bg-transparent md:pointer-events-none"
+        )}
+      >
+        <div className="pointer-events-auto flex items-center gap-2">
+          <div className="relative flex-1">
+            {listOpen ? (
               <button
-                onClick={handleRefresh}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors text-sm"
-                disabled={isRefreshing}
-                title="Refresh data"
+                onClick={closeList}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground"
+                aria-label="Close list"
               >
-                <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
-                <span className="hidden sm:inline">Refresh</span>
+                <ArrowLeft className="w-4 h-4" />
               </button>
+            ) : (
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            )}
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={stopSearch}
+              onChange={(e) => setStopSearch(e.target.value)}
+              onFocus={() => setListOpen(true)}
+              onKeyDown={(e) => e.key === 'Escape' && closeList()}
+              placeholder="Search stops & buildings"
+              className="w-full h-11 pl-9 pr-9 bg-card/90 backdrop-blur-md border border-border rounded-full shadow-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            {stopSearch && (
               <button
-                onClick={() => setShowScanner(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm"
-                title="Scan QR Code"
-              >
-                <ScanLine className="w-4 h-4" />
-                <span className="hidden sm:inline">Scan</span>
-              </button>
-            </div>
-          </div>
-          
-          {/* Location button */}
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              onClick={handleGetLocation}
-              disabled={isLocating}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl transition-colors text-sm",
-                userLocation 
-                  ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30" 
-                  : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80",
-                isLocating && "animate-pulse"
-              )}
-              title={userLocation ? "Location enabled" : "Get my location"}
-            >
-              <Locate className="w-4 h-4" />
-              <span className="hidden sm:inline">{userLocation ? "Located" : "My Location"}</span>
-            </button>
-            {directionsDestination && (
-              <button
-                onClick={() => setDirectionsDestination(null)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors text-sm"
-                title="Clear directions"
+                onClick={() => setStopSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
-                <span className="hidden sm:inline">Clear Route</span>
               </button>
             )}
           </div>
 
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={cn(fabClass, "bg-card/90 border-border text-foreground hover:bg-secondary")} aria-label="Menu">
+                <Menu className="w-5 h-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="z-[1100]">
+              <DropdownMenuItem asChild>
+                <Link to="/schedule"><Calendar className="w-4 h-4 mr-2" />Schedule</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/feedback"><MessageSquare className="w-4 h-4 mr-2" />Feedback</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="pointer-events-auto">
           <RouteSelector
             routes={routes}
             vehicles={vehicles}
             selectedRoute={selectedRoute}
             onSelectRoute={setSelectedRoute}
           />
-          
-          {/* Dynamic route warning for routes with no active buses */}
-          {(() => {
-            const now = new Date();
-            const dayOfWeek = now.getDay();
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            const currentTime = hours * 60 + minutes;
-            
-            // Check for school break first
-            const breakPeriod = getCurrentBreakPeriod();
-            
-            // Service hours: Mon-Fri, roughly 7:15 AM - 5:30 PM
-            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-            const serviceStart = 7 * 60 + 15; // 7:15 AM
-            const serviceEnd = 17 * 60 + 30; // 5:30 PM
-            const isOutsideHours = currentTime < serviceStart || currentTime > serviceEnd;
-            
-            const inactiveRoutes = routes.filter(r => 
-              !vehicles.some(v => v.routeTag === r.tag)
-            );
-            
-            // School break takes priority
-            if (breakPeriod) {
-              return (
-                <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-200/90">
-                    <span className="font-medium">Note:</span> Buses are out of service for {breakPeriod.name} ({formatBreakDates(breakPeriod)}). WKU Transit operates Mon-Fri during Fall & Spring semesters only.
-                  </p>
-                </div>
-              );
-            }
-            
-            // Weekend message
-            if (isWeekend) {
-              return (
-                <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-200/90">
-                    <span className="font-medium">Note:</span> Buses are out of service. WKU Transit operates Monday - Friday only.
-                  </p>
-                </div>
-              );
-            }
-            
-            // Outside hours message
-            if (isOutsideHours && inactiveRoutes.length === routes.length) {
-              return (
-                <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-200/90">
-                    <span className="font-medium">Note:</span> Buses are out of service for the day. Service hours are Mon-Fri, 7:15 AM - 5:30 PM.
-                  </p>
-                </div>
-              );
-            }
-            
-            if (inactiveRoutes.length === 0) return null;
-            
-            // Check if Kentucky Street route is among the inactive routes
-            const kentuckyRoute = inactiveRoutes.find(r => r.tag === 'blue' || r.title.toLowerCase().includes('kentucky'));
-            const otherInactiveRoutes = inactiveRoutes.filter(r => r.tag !== 'blue' && !r.title.toLowerCase().includes('kentucky'));
-            
-            return (
-              <div className="mt-3 space-y-2">
-                {kentuckyRoute && (
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-200/90">
-                      <span className="font-medium">Note:</span> {kentuckyRoute.title} tracking is unavailable due to faulty GPS devices on buses. Contact the Transportation office at{' '}
-                      <a href="mailto:transportation@wku.edu" className="underline hover:text-amber-100">transportation@wku.edu</a> to voice your concern.
-                    </p>
-                  </div>
-                )}
-                {otherInactiveRoutes.length > 0 && (
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-200/90">
-                      <span className="font-medium">Note:</span>{' '}
-                      {otherInactiveRoutes.length === 1 
-                        ? `${otherInactiveRoutes[0].title} data is currently not being updated by the transit system.`
-                        : `${otherInactiveRoutes.map(r => r.title.replace('Route ', '')).join(', ')} routes data is currently not being updated.`
-                      } Live tracking may be unavailable.
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-        </div>
-      </header>
-
-      {/* View toggle for mobile */}
-      <div className="md:hidden flex-shrink-0 px-4 py-2 border-b border-border bg-card/50">
-        <div className="flex rounded-lg bg-secondary p-1">
-          <button
-            onClick={() => setView('map')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors",
-              view === 'map'
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <MapIcon className="w-4 h-4" />
-            Map
-          </button>
-          <button
-            onClick={() => setView('list')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors",
-              view === 'list'
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <List className="w-4 h-4" />
-            Stops
-          </button>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Map view */}
-        <div className={cn(
-          "flex-1 relative",
-          view === 'list' && "hidden md:block"
-        )}>
-          <BusMap
-            routes={routes}
-            vehicles={vehicles}
-            selectedRoute={selectedRoute}
-            selectedStop={selectedStop}
-            selectedVehicle={selectedVehicle}
-            selectedBuilding={selectedBuilding}
-            onStopClick={handleStopClick}
-            onVehicleClick={handleVehicleClick}
-            onBuildingClick={handleBuildingClick}
-            isVisible={view === 'map'}
-            userLocation={userLocation}
-            directionsDestination={directionsDestination}
-            onClearDirections={() => setDirectionsDestination(null)}
-          />
-          {!selectedRoute && (
-            <RouteLegend routes={routes} vehicles={vehicles} />
-          )}
         </div>
 
-        {/* Stop list sidebar */}
-        <div className={cn(
-          "w-full md:w-80 lg:w-96 border-l border-border bg-card flex-col",
-          view === 'map' ? "hidden md:flex" : "flex"
-        )}>
-          {/* Search input in sidebar */}
-          <div className="p-4 border-b border-border flex-shrink-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={stopSearch}
-                onChange={(e) => setStopSearch(e.target.value)}
-                placeholder="Search stops & buildings..."
-                className="w-full pl-9 pr-8 py-2.5 bg-secondary/80 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
-              />
-              {stopSearch && (
-                <button
-                  onClick={() => setStopSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 min-h-0 overflow-y-auto">
+        {listOpen ? (
+          <div className="pointer-events-auto flex-1 min-h-0 overflow-y-auto rounded-2xl bg-card border border-border md:shadow-xl">
             <StopList
               routes={routes}
               selectedRoute={selectedRoute}
@@ -491,8 +308,45 @@ const Index = () => {
               hasUserLocation={!!userLocation}
             />
           </div>
-        </div>
+        ) : (
+          <ServiceNotice routes={routes} vehicles={vehicles} />
+        )}
       </div>
+
+      {/* Bottom-right map actions (kept clear of the map attribution) */}
+      <div className="absolute right-3 bottom-[calc(2rem+env(safe-area-inset-bottom))] z-10 flex flex-col gap-2">
+        <button
+          onClick={handleGetLocation}
+          disabled={isLocating}
+          className={cn(
+            fabClass,
+            userLocation
+              ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
+              : "bg-card/90 border-border text-foreground hover:bg-secondary",
+            isLocating && "animate-pulse"
+          )}
+          aria-label={userLocation ? "Location enabled" : "Show my location"}
+        >
+          <Locate className="w-5 h-5" />
+        </button>
+        <button
+          onClick={() => setShowScanner(true)}
+          className={cn(fabClass, "bg-primary border-primary text-primary-foreground hover:bg-primary/90")}
+          aria-label="Scan stop QR code"
+        >
+          <ScanLine className="w-5 h-5" />
+        </button>
+      </div>
+
+      {directionsDestination && (
+        <button
+          onClick={() => setDirectionsDestination(null)}
+          className="absolute left-1/2 -translate-x-1/2 bottom-[calc(2rem+env(safe-area-inset-bottom))] z-10 flex items-center gap-1.5 px-4 h-10 rounded-full bg-card/90 backdrop-blur-md border border-blue-500/40 text-blue-400 text-sm shadow-lg"
+        >
+          <X className="w-4 h-4" />
+          Clear route
+        </button>
+      )}
 
       {/* Selected stop card */}
       {selectedStop && selectedStopRoute && (
@@ -532,33 +386,6 @@ const Index = () => {
           routes={routes}
         />
       )}
-
-      {/* Footer */}
-      <footer className="flex-shrink-0 border-t border-border bg-card/90 backdrop-blur-md">
-        <div className="px-4 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <Link
-                to="/feedback"
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Feedback</span>
-              </Link>
-              <Link
-                to="/schedule"
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Calendar className="w-4 h-4" />
-                <span>Schedule</span>
-              </Link>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} TopperBus
-            </div>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 };

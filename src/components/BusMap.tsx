@@ -87,8 +87,8 @@ const BusMap = forwardRef<BusMapHandle, BusMapProps>(({
       maxNativeZoom: 18,
     }).addTo(mapRef.current);
 
-    // Add zoom control to bottom right
-    L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current);
+    // Zoom buttons (desktop only, hidden on touch-size screens via CSS)
+    L.control.zoom({ position: 'topright' }).addTo(mapRef.current);
 
     markersRef.current = L.layerGroup().addTo(mapRef.current);
     polylinesRef.current = L.layerGroup().addTo(mapRef.current);
