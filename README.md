@@ -31,3 +31,9 @@ Required secrets (set in the Cloudflare dashboard or with `npx wrangler secret p
 | `DISCORD_WEBHOOK_BUGS` | Bug reports |
 | `DISCORD_WEBHOOK_FEEDBACK` | General feedback |
 | `DISCORD_WEBHOOK_URL` | Yearly calendar reminder |
+
+Build variable (set under the Worker's Settings → Build → Variables and secrets, not runtime secrets, since it is baked into the frontend at build time):
+
+| Name | Used for |
+| --- | --- |
+| `VITE_CARTO_API_KEY` | CARTO dark basemap tiles (free key from https://carto.com/basemaps/apikey) |
