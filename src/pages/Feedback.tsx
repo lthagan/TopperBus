@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import TurnstileWidget from '@/components/TurnstileWidget';
 
@@ -70,16 +69,19 @@ const Feedback = () => {
     setIsSubmitting(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('send-feedback', {
-        body: { type, message: message.trim(), email: email.trim() || undefined, turnstileToken }
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, message: message.trim(), email: email.trim() || undefined, turnstileToken }),
       });
+      const data = await response.json().catch(() => null);
 
-      if (error) throw error;
-      
-      if (data?.error === 'rate_limited') {
+      if (response.status === 429 || data?.error === 'rate_limited') {
         toast.error('Too many submissions. Please try again later.');
         return;
       }
+
+      if (!response.ok) throw new Error(data?.error ?? `Request failed (${response.status})`);
 
       // Set cooldown
       localStorage.setItem(STORAGE_KEY, Date.now().toString());
