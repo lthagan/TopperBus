@@ -13,13 +13,13 @@ export default defineConfig(() => ({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "icon-192.png", "icon-512.png"],
+      includeAssets: ["favicon.ico", "favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png"],
       manifest: {
-        name: "WKU Transit",
-        short_name: "WKU Transit",
+        name: "TopperBus",
+        short_name: "TopperBus",
         description: "Track WKU campus buses in real-time",
-        theme_color: "#0f1419",
-        background_color: "#0f1419",
+        theme_color: "#121212",
+        background_color: "#121212",
         display: "standalone",
         orientation: "portrait-primary",
         icons: [

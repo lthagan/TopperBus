@@ -174,7 +174,7 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
       description: sanitizedMessage.slice(0, 2000),
       color: typeColor[type],
       fields: sanitizedEmail ? [{ name: '📧 Contact Email', value: sanitizedEmail, inline: false }] : [],
-      footer: { text: 'WKU Transit Feedback' },
+      footer: { text: 'TopperBus Feedback' },
       timestamp: new Date().toISOString(),
     }],
   };
@@ -214,7 +214,7 @@ async function sendCalendarReminder(env: Env): Promise<void> {
         },
         { name: '📝 File to Update', value: '`src/lib/academicCalendar.ts`', inline: false },
       ],
-      footer: { text: 'WKU Transit App' },
+      footer: { text: 'TopperBus' },
       timestamp: new Date().toISOString(),
     }],
   };

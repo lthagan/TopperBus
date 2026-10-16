@@ -1,11 +1,11 @@
 {
-  "name": "WKU Transit",
-  "short_name": "WKU Transit",
+  "name": "TopperBus",
+  "short_name": "TopperBus",
   "description": "Track WKU campus buses in real-time. View arrival times, routes, and scan QR codes at bus stops.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1419",
-  "theme_color": "#0f1419",
+  "background_color": "#121212",
+  "theme_color": "#121212",
   "orientation": "portrait-primary",
   "icons": [
     {

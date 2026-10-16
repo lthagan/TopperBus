@@ -87,7 +87,7 @@ const Feedback = () => {
       localStorage.setItem(STORAGE_KEY, Date.now().toString());
       setCooldownRemaining(COOLDOWN_SECONDS);
 
-      toast.success('Feedback sent! Thank you for helping improve WKU Transit.');
+      toast.success('Feedback sent! Thank you for helping improve TopperBus.');
       setMessage('');
       setEmail('');
       setType('feedback');
@@ -122,7 +122,7 @@ const Feedback = () => {
           </Link>
           <div>
             <h1 className="text-lg font-semibold text-foreground">Send Feedback</h1>
-            <p className="text-xs text-muted-foreground">Help improve WKU Transit</p>
+            <p className="text-xs text-muted-foreground">Help improve TopperBus</p>
           </div>
         </div>
       </header>
