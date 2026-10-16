@@ -15,7 +15,8 @@ const RouteSelector = ({ routes, vehicles, selectedRoute, onSelectRoute }: Route
   const vehicleCount = (tag: string) => vehicles.filter(v => v.routeTag === tag).length;
 
   return (
-    <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-3 px-3 pb-1">
+    // Wraps rather than scrolls so no route is ever hidden off-screen
+    <div className="flex flex-wrap gap-1.5">
       <button
         onClick={() => onSelectRoute(null)}
         className={cn(

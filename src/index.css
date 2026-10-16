@@ -107,6 +107,23 @@
   color: hsl(0 0% 60%) !important;
 }
 
+.leaflet-control-zoom.leaflet-bar {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+}
+
+.leaflet-control-zoom.leaflet-bar a {
+  background: hsl(var(--card) / 0.9);
+  color: hsl(var(--foreground));
+  border-bottom-color: hsl(var(--border));
+}
+
+.leaflet-control-zoom.leaflet-bar a:hover {
+  background: hsl(var(--secondary));
+}
+
 /* Pinch-to-zoom on phones; zoom buttons only on larger screens */
 @media (max-width: 767px) {
   .leaflet-control-zoom {

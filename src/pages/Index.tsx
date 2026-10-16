@@ -241,13 +241,13 @@ const Index = () => {
             {listOpen ? (
               <button
                 onClick={closeList}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground"
+                className="absolute z-10 left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground"
                 aria-label="Close list"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
             ) : (
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Search className="absolute z-10 left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             )}
             <input
               ref={searchInputRef}
@@ -262,7 +262,7 @@ const Index = () => {
             {stopSearch && (
               <button
                 onClick={() => setStopSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute z-10 right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
