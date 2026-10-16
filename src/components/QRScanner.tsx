@@ -169,7 +169,7 @@ const QRScanner = ({ onScan, onClose, routes }: QRScannerProps) => {
         ) : invalidCode ? (
           <div className="text-center max-w-sm">
             <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-8 h-8 text-amber-500" />
+              <AlertCircle className="w-8 h-8 text-amber-600 dark:text-amber-500" />
             </div>
             <h3 className="font-semibold text-lg mb-2">Invalid QR Code</h3>
             <p className="text-muted-foreground mb-6">

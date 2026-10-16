@@ -398,7 +398,7 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
                 {stop.shortTitle || stop.title}
               </span>
               {sortedPredictions.length > 0 && (
-                <span className="text-xs text-green-400 font-medium">
+                <span className="text-xs text-green-600 dark:text-green-400 font-medium">
                   {sortedPredictions[0].prediction.minutes === 0 
                     ? 'NOW' 
                     : `${sortedPredictions[0].prediction.minutes} min`}
@@ -523,7 +523,7 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
                 const breakPeriod = getCurrentBreakPeriod();
                 return (
                   <div className="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-left">
-                    <p className="text-xs text-amber-200/90 mb-1.5 font-medium">
+                    <p className="text-xs text-amber-800/90 dark:text-amber-200/90 mb-1.5 font-medium">
                       {breakPeriod 
                         ? `Service suspended for ${breakPeriod.name} (${formatBreakDates(breakPeriod)})`
                         : 'Routes not currently in service:'
@@ -540,7 +540,7 @@ const StopCard = ({ stop, route, allRoutes, onClose }: StopCardProps) => {
                           />
                           <span>{r.title}</span>
                           {schedule && (
-                            <span className="text-amber-400/80">
+                            <span className="text-amber-600/80 dark:text-amber-400/80">
                               ({schedule.startHour > 12 ? schedule.startHour - 12 : schedule.startHour}:{schedule.startMin.toString().padStart(2, '0')} {schedule.startHour >= 12 ? 'PM' : 'AM'} - {schedule.endHour > 12 ? schedule.endHour - 12 : schedule.endHour}:{schedule.endMin.toString().padStart(2, '0')} PM)
                             </span>
                           )}

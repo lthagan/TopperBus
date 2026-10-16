@@ -10,6 +10,7 @@ import StopList from '@/components/StopList';
 import QRScanner from '@/components/QRScanner';
 import BuildingCard from '@/components/BuildingCard';
 import ServiceNotice from '@/components/ServiceNotice';
+import ThemeToggle from '@/components/ThemeToggle';
 import { CampusBuilding } from '@/lib/campusBuildings';
 import { Bus, ScanLine, Calendar, MessageSquare, Locate, X, Search, Menu, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -17,6 +18,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -276,13 +278,17 @@ const Index = () => {
                 <Menu className="w-5 h-5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="z-[1100]">
+            <DropdownMenuContent align="end" className="z-[1100] w-52">
               <DropdownMenuItem asChild>
                 <Link to="/schedule"><Calendar className="w-4 h-4 mr-2" />Schedule</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/feedback"><MessageSquare className="w-4 h-4 mr-2" />Feedback</Link>
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <div className="p-1">
+                <ThemeToggle />
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -321,7 +327,7 @@ const Index = () => {
           className={cn(
             fabClass,
             userLocation
-              ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
+              ? "bg-blue-500/20 border-blue-500/40 text-blue-600 dark:text-blue-400"
               : "bg-card/90 border-border text-foreground hover:bg-secondary",
             isLocating && "animate-pulse"
           )}
@@ -341,7 +347,7 @@ const Index = () => {
       {directionsDestination && (
         <button
           onClick={() => setDirectionsDestination(null)}
-          className="absolute left-1/2 -translate-x-1/2 bottom-[calc(2rem+env(safe-area-inset-bottom))] z-10 flex items-center gap-1.5 px-4 h-10 rounded-full bg-card/90 backdrop-blur-md border border-blue-500/40 text-blue-400 text-sm shadow-lg"
+          className="absolute left-1/2 -translate-x-1/2 bottom-[calc(2rem+env(safe-area-inset-bottom))] z-10 flex items-center gap-1.5 px-4 h-10 rounded-full bg-card/90 backdrop-blur-md border border-blue-500/40 text-blue-600 dark:text-blue-400 text-sm shadow-lg"
         >
           <X className="w-4 h-4" />
           Clear route

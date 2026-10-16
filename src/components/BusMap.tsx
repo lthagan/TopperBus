@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo, useCallback, useState, useImperativeHandle, forwardRef } from 'react';
 import L from 'leaflet';
+import { useTheme } from 'next-themes';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
@@ -24,6 +25,15 @@ interface BusMapProps {
 
 export interface BusMapHandle {
   getMap: () => L.Map | null;
+}
+
+// CARTO requires an API key; it is public by nature (sent with every tile request)
+// and restricted to topperbus.org in the CARTO dashboard.
+const CARTO_KEY = import.meta.env.VITE_CARTO_API_KEY || 'cb1_4m1x_1_d35045db02e65b6b43047fd7';
+
+function tileUrl(theme: 'light' | 'dark') {
+  const style = theme === 'dark' ? 'dark_all' : 'light_all';
+  return `https://{s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CARTO_KEY)}`;
 }
 
 // Different dash patterns for overlapping routes
@@ -58,6 +68,9 @@ const BusMap = forwardRef<BusMapHandle, BusMapProps>(({
   const buildingMarkersRef = useRef<L.LayerGroup | null>(null);
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
   const routingControlRef = useRef<L.Routing.Control | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const { resolvedTheme } = useTheme();
+  const mapTheme = resolvedTheme === 'light' ? 'light' : 'dark';
 
   useImperativeHandle(ref, () => ({
     getMap: () => mapRef.current,
@@ -73,12 +86,8 @@ const BusMap = forwardRef<BusMapHandle, BusMapProps>(({
       zoomControl: false,
     });
 
-    // Dark theme tiles. CARTO requires an API key; it is public by nature (sent with every
-    // tile request) and restricted to topperbus.org in the CARTO dashboard.
-    const cartoKey = import.meta.env.VITE_CARTO_API_KEY || 'cb1_4m1x_1_d35045db02e65b6b43047fd7';
-    const tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' +
-      (cartoKey ? `?key=${encodeURIComponent(cartoKey)}` : '');
-    L.tileLayer(tileUrl, {
+    // Basemap tiles; the style follows the app theme (see the effect below)
+    tileLayerRef.current = L.tileLayer(tileUrl(mapTheme), {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 20,
@@ -676,6 +685,11 @@ const BusMap = forwardRef<BusMapHandle, BusMapProps>(({
       });
     }
   }, [selectedVehicle?.lat, selectedVehicle?.lon]);
+
+  // Swap basemap style when the theme changes
+  useEffect(() => {
+    tileLayerRef.current?.setUrl(tileUrl(mapTheme));
+  }, [mapTheme]);
 
   // Invalidate map size when visibility changes
   useEffect(() => {

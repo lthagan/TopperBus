@@ -10,6 +10,17 @@
     <meta name="description" content="Track WKU campus buses in real-time. View arrival times, routes, and scan QR codes at bus stops for instant schedule information." />
     <meta name="author" content="Topper Bus" />
     <meta name="theme-color" content="#121212" />
+    <script>
+      // Apply the saved/system theme before first paint to avoid a light flash (next-themes takes over after load)
+      (function () {
+        try {
+          var t = localStorage.getItem('theme') || 'system';
+          var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#121212' : '#f7f7f7');
+        } catch (e) {}
+      })();
+    </script>
     <link rel="manifest" href="/manifest.json" />
 
     <meta property="og:title" content="Topper Bus - Live WKU Bus Tracker" />

@@ -59,7 +59,7 @@ function getNotice(routes: Route[], vehicles: VehicleLocation[]): Notice | null 
     details.push(
       <>
         {kentuckyRoute.title} tracking is unavailable due to faulty GPS devices on buses. Contact the Transportation office at{' '}
-        <a href="mailto:transportation@wku.edu" className="underline hover:text-amber-100">transportation@wku.edu</a> to voice your concern.
+        <a href="mailto:transportation@wku.edu" className="underline hover:text-amber-950 dark:hover:text-amber-100">transportation@wku.edu</a> to voice your concern.
       </>
     );
   }
@@ -90,17 +90,17 @@ const ServiceNotice = ({ routes, vehicles }: ServiceNoticeProps) => {
     <div className="pointer-events-auto max-w-md rounded-xl bg-card/90 backdrop-blur-md border border-amber-500/30 shadow-lg">
       <button
         onClick={() => setExpanded(e => !e)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-amber-200/90"
+        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-amber-800/90 dark:text-amber-200/90"
         aria-expanded={expanded}
       >
-        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 flex-shrink-0" />
         <span className="font-medium truncate">{notice.summary}</span>
         <ChevronDown className={cn('w-3.5 h-3.5 ml-auto flex-shrink-0 transition-transform', expanded && 'rotate-180')} />
       </button>
       {expanded && (
         <div className="px-3 pb-2.5 space-y-1.5">
           {notice.details.map((detail, i) => (
-            <p key={i} className="text-xs text-amber-200/80">{detail}</p>
+            <p key={i} className="text-xs text-amber-800/80 dark:text-amber-200/80">{detail}</p>
           ))}
         </div>
       )}

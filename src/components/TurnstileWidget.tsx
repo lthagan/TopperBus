@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { useTheme } from 'next-themes';
 
 interface TurnstileWidgetProps {
   onVerify: (token: string) => void;
@@ -28,6 +29,9 @@ const TurnstileWidget = ({ onVerify, onError, onExpire }: TurnstileWidgetProps) 
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const scriptLoadedRef = useRef(false);
+  // Follow the app's theme rather than the OS setting
+  const { resolvedTheme } = useTheme();
+  const widgetTheme = resolvedTheme === 'dark' ? 'dark' : 'light';
 
   const renderWidget = useCallback(() => {
     if (!containerRef.current || !window.turnstile) return;
@@ -49,10 +53,10 @@ const TurnstileWidget = ({ onVerify, onError, onExpire }: TurnstileWidgetProps) 
       callback: onVerify,
       'error-callback': onError,
       'expired-callback': onExpire,
-      theme: 'auto',
+      theme: widgetTheme,
       size: 'normal',
     });
-  }, [onVerify, onError, onExpire]);
+  }, [onVerify, onError, onExpire, widgetTheme]);
 
   useEffect(() => {
     // Check if script is already loaded

@@ -307,7 +307,7 @@ const Schedule = () => {
                     "px-1.5 py-0.5 rounded-full text-xs",
                     selectedRoute === route.tag 
                       ? "bg-white/20"
-                      : busCount > 0 ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                      : busCount > 0 ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-red-500/20 text-red-600 dark:text-red-400"
                   )}>
                     {busCount}
                   </span>
@@ -359,17 +359,17 @@ const Schedule = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {!isRouteInService(route.tag) ? (
-                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-400 text-sm">
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-sm">
                           <Clock className="w-4 h-4" />
                           Outside Hours
                         </span>
                       ) : routeVehicles.length > 0 ? (
-                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 text-green-400 text-sm">
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 text-green-600 dark:text-green-400 text-sm">
                           <CheckCircle className="w-4 h-4" />
                           {routeVehicles.length} Active
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 text-red-400 text-sm">
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 text-red-600 dark:text-red-400 text-sm">
                           <AlertCircle className="w-4 h-4" />
                           No Service
                         </span>
@@ -388,14 +388,14 @@ const Schedule = () => {
                     <div className="grid grid-cols-2 gap-4 mb-3">
                       <div className="rounded-lg bg-card p-3 border border-border">
                         <p className="text-xs text-muted-foreground mb-1">First Bus</p>
-                        <p className="font-semibold text-green-400">{schedule.firstBus}</p>
+                        <p className="font-semibold text-green-600 dark:text-green-400">{schedule.firstBus}</p>
                         <p className="text-xs text-muted-foreground mt-1 truncate">
                           {schedule.startStop}
                         </p>
                       </div>
                       <div className="rounded-lg bg-card p-3 border border-border">
                         <p className="text-xs text-muted-foreground mb-1">Last Bus</p>
-                        <p className="font-semibold text-amber-400">{schedule.lastBus}</p>
+                        <p className="font-semibold text-amber-600 dark:text-amber-400">{schedule.lastBus}</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           End of service
                         </p>
