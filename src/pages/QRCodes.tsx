@@ -30,7 +30,7 @@ const QRCodes = () => {
   }, []);
 
   const getBaseUrl = () => {
-    return 'https://topperbus.com';
+    return 'https://topperbus.org';
   };
 
   const stopsWithRoutes = useMemo(() => {
@@ -206,7 +206,7 @@ const QRCodes = () => {
                     Scan QR code or visit:
                   </p>
                   <p className="text-lg font-bold text-primary">
-                    topperbus.com
+                    topperbus.org
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
                     Click "Stops" and search for "{stop.title}"

@@ -1,6 +1,6 @@
 # TopperBus
 
-Live WKU campus bus tracker — https://topperbus.com/
+Live WKU campus bus tracker — https://topperbus.org/
 
 Vite + React frontend, hosted on a single Cloudflare Worker ([worker/index.ts](worker/index.ts)) that:
 
