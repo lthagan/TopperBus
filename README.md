@@ -1,4 +1,4 @@
-# TopperBus
+# Topper Bus
 
 Live WKU campus bus tracker — https://topperbus.org/
 

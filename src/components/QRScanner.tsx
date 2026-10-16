@@ -173,7 +173,7 @@ const QRScanner = ({ onScan, onClose, routes }: QRScannerProps) => {
             </div>
             <h3 className="font-semibold text-lg mb-2">Invalid QR Code</h3>
             <p className="text-muted-foreground mb-6">
-              This QR code is not a valid TopperBus stop code. Please scan a QR code from an official bus stop.
+              This QR code is not a valid Topper Bus stop code. Please scan a QR code from an official bus stop.
             </p>
             <div className="flex flex-col gap-3">
               <Button onClick={handleRetry} variant="default" className="w-full">

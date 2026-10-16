@@ -174,7 +174,7 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
       description: sanitizedMessage.slice(0, 2000),
       color: typeColor[type],
       fields: sanitizedEmail ? [{ name: '📧 Contact Email', value: sanitizedEmail, inline: false }] : [],
-      footer: { text: 'TopperBus Feedback' },
+      footer: { text: 'Topper Bus Feedback' },
       timestamp: new Date().toISOString(),
     }],
   };
@@ -214,7 +214,7 @@ async function sendCalendarReminder(env: Env): Promise<void> {
         },
         { name: '📝 File to Update', value: '`src/lib/academicCalendar.ts`', inline: false },
       ],
-      footer: { text: 'TopperBus' },
+      footer: { text: 'Topper Bus' },
       timestamp: new Date().toISOString(),
     }],
   };

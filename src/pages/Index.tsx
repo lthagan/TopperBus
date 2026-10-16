@@ -201,7 +201,7 @@ const Index = () => {
           <div className="relative">
             <Bus className="w-12 h-12 text-primary animate-pulse" />
           </div>
-          <p className="text-muted-foreground">Loading TopperBus...</p>
+          <p className="text-muted-foreground">Loading Topper Bus...</p>
         </div>
       </div>
     );

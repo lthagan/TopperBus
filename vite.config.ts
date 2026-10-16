@@ -15,8 +15,8 @@ export default defineConfig(() => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png"],
       manifest: {
-        name: "TopperBus",
-        short_name: "TopperBus",
+        name: "Topper Bus",
+        short_name: "Topper Bus",
         description: "Track WKU campus buses in real-time",
         theme_color: "#121212",
         background_color: "#121212",

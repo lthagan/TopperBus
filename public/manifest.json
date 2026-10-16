@@ -1,6 +1,6 @@
 {
-  "name": "TopperBus",
-  "short_name": "TopperBus",
+  "name": "Topper Bus",
+  "short_name": "Topper Bus",
   "description": "Track WKU campus buses in real-time. View arrival times, routes, and scan QR codes at bus stops.",
   "start_url": "/",
   "display": "standalone",
