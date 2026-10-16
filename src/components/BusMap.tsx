@@ -73,8 +73,9 @@ const BusMap = forwardRef<BusMapHandle, BusMapProps>(({
       zoomControl: false,
     });
 
-    // Dark theme tiles (CARTO requires an API key; set VITE_CARTO_API_KEY at build time)
-    const cartoKey = import.meta.env.VITE_CARTO_API_KEY;
+    // Dark theme tiles. CARTO requires an API key; it is public by nature (sent with every
+    // tile request) and restricted to topperbus.org in the CARTO dashboard.
+    const cartoKey = import.meta.env.VITE_CARTO_API_KEY || 'cb1_4m1x_1_d35045db02e65b6b43047fd7';
     const tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' +
       (cartoKey ? `?key=${encodeURIComponent(cartoKey)}` : '');
     L.tileLayer(tileUrl, {
